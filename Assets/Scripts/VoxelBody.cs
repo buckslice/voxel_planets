@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using UnityEditor;
 
 public class VoxelBody : MonoBehaviour {
 
@@ -14,8 +15,11 @@ public class VoxelBody : MonoBehaviour {
 
     public float radius = 500f;
 
+    float startTime;
+
     // Use this for initialization
     void Start() {
+        startTime = Time.realtimeSinceStartup;
         root = new Octree(this, Vector3.zero, testDepth, 0);
         root.generate();
 
@@ -37,7 +41,13 @@ public class VoxelBody : MonoBehaviour {
         //    t.split();
         //}
 
+        Octree.splitThisFrame = false;
         root.update();
+
+        //if (!Octree.splitThisFrame) {
+        //    Debug.Log(Time.realtimeSinceStartup - startTime);
+        //    EditorApplication.isPaused = true;
+        //}
     }
 
 }

@@ -4,14 +4,13 @@ using System.Collections.Generic;
 
 static public class MarchingCubes {
 
-    // gonna need to change this for threading
-    // like put inside the create mesh function
-    private static Vector3[] edgeVertex = new Vector3[12];
-
-    // start and end mean like padding before and after basically
-    static public Mesh CreateMesh(float[][][] voxels, float voxelSize, int start = 0, int end = 0) {
+    // start and end are used to add padding before and after basically
+    static public MeshData CalculateMeshData(float[][][] voxels, float voxelSize, int start = 0, int end = 0) {
         List<Vector3> verts = new List<Vector3>();
-        List<int> index = new List<int>();
+        List<int> indices = new List<int>();
+
+        // used to be static but now in here so can be multithreaded
+        Vector3[] edgeVertices = new Vector3[12];
 
         float[] cube = new float[8];
 
@@ -19,38 +18,20 @@ static public class MarchingCubes {
             for (int y = start; y < voxels[0].Length - 1 - end; y++) {
                 for (int z = start; z < voxels[0][0].Length - 1 - end; z++) {
                     //Get the values in the 8 neighbours which make up a cube
-                    FillCube(x, y, z, voxels, cube);
+                    for (int i = 0; i < 8; i++) {
+                        cube[i] = voxels[x + vertexOffset[i, 0]][y + vertexOffset[i, 1]][z + vertexOffset[i, 2]];
+                    }
                     //Perform algorithm
-                    MarchCube(new Vector4(x, y, z, voxelSize), cube, verts, index);
+                    MarchCube(new Vector4(x, y, z, voxelSize), cube, verts, indices, edgeVertices);
                 }
             }
         }
 
-        Mesh mesh = new Mesh();
-
-        mesh.vertices = verts.ToArray();
-        mesh.triangles = index.ToArray();
-
-        return mesh;
-    }
-
-    static void FillCube(int x, int y, int z, float[][][] voxels, float[] cube) {
-        for (int i = 0; i < 8; i++) {
-            //cube[i] = voxels[x + vertexOffset[i, 0], y + vertexOffset[i, 1], z + vertexOffset[i, 2]];
-            cube[i] = voxels[x + vertexOffset[i, 0]][y + vertexOffset[i, 1]][z + vertexOffset[i, 2]];
-        }
-
-    }
-
-    // GetOffset finds the approximate point of intersection of the surface
-    // between two points with the values v1 and v2
-    static float GetOffset(float v1, float v2) {
-        float delta = v2 - v1;
-        return (delta == 0.0f) ? 0.5f : (target - v1) / delta;
+        return new MeshData(verts.ToArray(), indices.ToArray());
     }
 
     //MarchCube performs the Marching Cubes algorithm on a single cube
-    static void MarchCube(Vector4 pos, float[] cube, List<Vector3> vertList, List<int> indexList) {
+    static void MarchCube(Vector4 pos, float[] cube, List<Vector3> vertList, List<int> indexList, Vector3[] edgeVertices) {
         int i, j, vert, idx;
         int flagIndex = 0;
         float offset = 0.0f;
@@ -68,13 +49,17 @@ static public class MarchingCubes {
         for (i = 0; i < 12; i++) {
             //if there is an intersection on this edge
             if ((edgeFlags & (1 << i)) != 0) {
-                offset = GetOffset(cube[edgeConnection[i, 0]], cube[edgeConnection[i, 1]]);
+                // find approximate point of intersection of the surface between two points
+                float v1 = cube[edgeConnection[i, 0]];
+                float v2 = cube[edgeConnection[i, 1]];
+                float delta = v2 - v1;
+                offset = (delta == 0.0f) ? 0.5f : (target - v1) / delta;
 
-                edgeVertex[i].x = pos.x + (vertexOffset[edgeConnection[i, 0], 0] + offset * edgeDirection[i, 0]);
-                edgeVertex[i].y = pos.y + (vertexOffset[edgeConnection[i, 0], 1] + offset * edgeDirection[i, 1]);
-                edgeVertex[i].z = pos.z + (vertexOffset[edgeConnection[i, 0], 2] + offset * edgeDirection[i, 2]);
+                edgeVertices[i].x = pos.x + (vertexOffset[edgeConnection[i, 0], 0] + offset * edgeDirection[i, 0]);
+                edgeVertices[i].y = pos.y + (vertexOffset[edgeConnection[i, 0], 1] + offset * edgeDirection[i, 1]);
+                edgeVertices[i].z = pos.z + (vertexOffset[edgeConnection[i, 0], 2] + offset * edgeDirection[i, 2]);
 
-                edgeVertex[i] *= pos.w;
+                edgeVertices[i] *= pos.w;
             }
         }
 
@@ -87,7 +72,7 @@ static public class MarchingCubes {
             for (j = 0; j < 3; j++) {
                 vert = triangleConnectionTable[flagIndex, 3 * i + j];
                 indexList.Add(idx + windingOrder[j]);
-                vertList.Add(edgeVertex[vert]);
+                vertList.Add(edgeVertices[vert]);
             }
         }
     }
