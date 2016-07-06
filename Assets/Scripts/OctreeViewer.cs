@@ -8,7 +8,7 @@ public class OctreeViewer : MonoBehaviour {
     public Bounds bounds;
     public Vector3 center;
     private Color c;
-    private float r;
+    //private float r;
 
     void OnDrawGizmosSelected() {
         Gizmos.color = c;
@@ -16,13 +16,14 @@ public class OctreeViewer : MonoBehaviour {
         //Gizmos.DrawSphere(center, r);
     }
 
-    public void init(int depth, int branch, Vector3 center, Bounds bounds) {
+    public void init(int depth, int branch, Vector3 center, Bounds bounds, Color c) {
         this.depth = depth;
         this.branch = branch;
         this.center = center;
         this.bounds = bounds;
-        r = Mathf.Pow(2f, Octree.MAX_DEPTH - depth);
-        c = Color.red;
+        this.c = c;
+
+        //r = Mathf.Pow(2f, Octree.MAX_DEPTH - depth);
         //switch (branch) {
         //    case 0:
         //        c = Color.red;

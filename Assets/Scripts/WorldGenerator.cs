@@ -27,7 +27,7 @@ public static class WorldGenerator {
                     double d = SimplexNoise.noise(worldPos.x * freq, worldPos.y * freq, worldPos.z * freq);
                     //WorleySample w = Noise.Worley3(worldPos.x * freq, worldPos.y * freq, worldPos.z * freq, 2, DistanceFunction.EUCLIDIAN);
                     //double d = w.F[1] - w.F[0];
-
+                    
                     //d = (d + 1.0) / 2.0;
                     float surfHeight = radius;
                     surfHeight += (float)d * 20f;

@@ -1,44 +1,44 @@
 ﻿using UnityEngine;
-using System.Collections;
+using System.Text;
+using System.Threading;
 
 public class Octree {
 
     // front right - front left - back left - back right, then same order but for bottom layer
     public Octree[] children = new Octree[8];
-
     // front left back right up down
     public Octree[] neighbors = new Octree[6];
-    public bool hasChildren = false;
 
+    public bool hasChildren = false;
     public int depth;  // 0 is root, MAX_LEVEL is depth limit
     private int branch;  // which child of your parent are you
 
     private float[][][] voxels;
-    private Vector3[][][] normals;
+
     private Vector3 pos;    // position of voxel grid (denotes the corner so it gets offset to remain centered)
                             //private CelestialBody cb;
-    private Vector3 center; // world space center of octree area
+    private readonly Vector3 center; // world space center of octree area
     private VoxelBody vox;
 
-    public GameObject obj;
-    private MeshRenderer mr;
+    public ChunkObject obj;
 
     public const int SIZE = 16;        // size of visible voxel grid
     public const int TSIZE = SIZE + 5;   // total size with voxel border (done for normal smoothing)
-    // so while size is 32, which means theres 32 blocks 
-    // you need 33 verts to store those blocks think of 33 vertical lines and the blocks are the 32 white space in between
+    // so while size is 16, which means theres 16 blocks 
+    // you need 17 verts to store those blocks (think of 17 points in a grid and the blocks are the 16 white space in between)
     // then add a buffer of 2 around (front and back so +4) for smoothing and normal calculation
-    // so mesh goes from 2-34 basically (0 1, 35 36) are extras
+    // so mesh goes from 2-19 basically (0 1, 20, 21) are not visible in final result
 
-    public const int MAX_DEPTH = 6;
-    private float voxelSize;   // size of voxels for this tree (in meters)
+    public const int MAX_DEPTH = 6;     // max depth meshes can split to
+    private float voxelSize;   // size of each voxel for this tree (in meters)
 
     public Bounds area; // bounding box for area this tree represents (gonna be worthless once planets can rotate lol)
-                        //private Bounds meshBounds;
+    //private Bounds meshBounds;
 
     public Mesh mesh;
 
-    public static bool splitThisFrame = true;
+    private bool splitting = false; // set when a tree is trying to split
+    private bool dying = false; // gets set when a child is merged into parent
 
     public Octree(VoxelBody vox, Vector3 center, int depth, int branch) {
         this.vox = vox;
@@ -52,98 +52,126 @@ public class Octree {
         area = new Bounds(center, Vector3.one * voxelSize * SIZE);
     }
 
-    public void generate() {
+    public MeshData Generate() {
         voxels = WorldGenerator.CreateVoxels(TSIZE, depth, voxelSize, vox.radius, pos);
-        voxels = VoxelUtils.SmoothVoxels(voxels);
+        //voxels = VoxelUtils.SmoothVoxels(voxels);
         MeshData data = MarchingCubes.CalculateMeshData(voxels, voxelSize, 2, 2);
 
         data.CalculateNormals();
+        data.CalculateColorsByDepth(depth);
+
         //data.normals = VoxelUtils.CalculateMeshNormals(voxels, voxelSize, data.vertices);
-
-        BuildGameObject(data);
-
+        return data;
     }
 
     // all the stuff that requires the main thread for Unity functions is done here
     // most other work is offloaded to helper threads. builds mesh and game object
-    public void BuildGameObject(MeshData data, Vector3[] normals = null) {
-        Color32 col = Color.HSVToRGB(2f / 3f / MAX_DEPTH * (MAX_DEPTH - depth), 1f, 1f);
-        int size = data.vertices.Length;
-        Color32[] colors = new Color32[size];
-        for (int i = 0; i < size; i++) {
-            colors[i] = col;
-        }
-        mesh = data.CreateMesh(colors);
+    // dont actually need to build a gameobject if theres no mesh...
+    // or at least have an empty object for the parent transform and dont attach components
+    public void BuildGameObject(MeshData data) {
 
-        //meshObj = new GameObject("Voxel Mesh " + pos.x.ToString() + " " + pos.y.ToString() + " " + pos.z.ToString());
-        obj = new GameObject("Tree " + depth + " " + center.x.ToString() + " " + center.y.ToString() + " " + center.z.ToString());
-        MeshFilter mf = obj.AddComponent<MeshFilter>();
-        mr = obj.AddComponent<MeshRenderer>();
-        mr.material = vox.mat;
-        mf.mesh = mesh;
-        obj.transform.parent = vox.transform;
-        obj.transform.localPosition = pos;
-        OctreeViewer oct = obj.AddComponent<OctreeViewer>();
-        oct.init(depth, branch, center, area);
+        mesh = data.CreateMesh();
 
+        obj = SplitManager.GetObject();
+
+        //StringBuilder builder = new StringBuilder();
+        //builder.Append("Tree ");
+        //builder.Append(depth);
+        //builder.Append(" ");
+        //builder.Append(center.x);
+        //builder.Append(" ");
+        //builder.Append(center.y);
+        //builder.Append(" ");
+        //builder.Append(center.z);
+        //obj.go.name = builder.ToString();
+
+        obj.mr.material = vox.mat;
+        obj.mf.mesh = mesh;
+
+        obj.go.transform.parent = vox.transform;
+        obj.go.transform.localPosition = pos;
+
+        obj.ov.init(depth, branch, center, area, mesh.vertexCount > 0 ? Color.red : Color.gray);
+
+        // wait to try out colliders for now
         //MeshCollider collider = m_mesh.AddComponent<MeshCollider>();
         //collider.sharedMesh = mesh;
 
-        //Debug.Log("Create mesh time = " + (Time.realtimeSinceStartup-startTime).ToString() );
     }
 
-
-    public void update() {
+    public void Update() {
         if (hasChildren) {
-            if (shouldMerge()) {
-                merge();
+            if (ShouldMerge()) {
+                Merge();
             } else {
                 for (int i = 0; i < 8; i++) {
-                    children[i].update();
+                    children[i].Update();
                 }
             }
-        } else if (shouldSplit()) {
-            split();
+        } else if (!splitting && ShouldSplit()) {
+            splitting = true;
+
+            //ThreadStart threadStart = delegate {
+            //    Split();
+            //};
+            //new Thread(threadStart).Start();
+
+            ThreadPool.QueueUserWorkItem(Split);
         }
     }
 
-    public Octree getBlockingNeighbors() {
+    public Octree GetBlockingNeighbors() {
         for (int i = 0; i < 6; i++) {
-            if (neighbors[i] != null && neighbors[i].depth < depth) {
-                return neighbors[i];
+            Octree tree = neighbors[i];
+            if(tree != null && tree.depth < depth && !tree.splitting) {
+                return tree;
             }
         }
         return null;
     }
 
+    public void Split(System.Object o) {
+        //Debug.Assert(depth <= MAX_DEPTH);
 
-    public void split() {
-        splitThisFrame = true;
-        Debug.Assert(depth <= MAX_DEPTH);
-
-        Octree n = getBlockingNeighbors();
-        while (n != null) {
-            n.split();
-        }
-
+        //Octree n = GetBlockingNeighbors();
+        //while (n != null) {
+        //    n.Split();
+        //    n = GetBlockingNeighbors();
+        //}
+        SplitData data = new SplitData(this);
         for (int i = 0; i < 8; i++) {
-            Vector3 coff = getChildOffset(i);
+            Vector3 coff = GetChildOffset(i);
             Octree child = new Octree(vox, center + coff * SIZE * voxelSize * .25f, depth + 1, i);
-            coff = ((coff + Vector3.one) / 2f) * (SIZE / 2f);
+            //coff = ((coff + Vector3.one) / 2f) * (SIZE / 2f);
             //o.passVoxels(voxels, (int)coff.x, (int)coff.y, (int)coff.z);
-            child.generate();
-
-            child.obj.transform.parent = obj.transform;
+            data.Add(child.Generate());
             children[i] = child;
         }
-        //setChildNeighbors();
-        updateNeighbors(true);
 
-        mr.enabled = false;
+        lock (SplitManager.splitResults) {
+            SplitManager.splitResults.Enqueue(data);
+        }
+
+    }
+
+    public void SplitResolve(MeshData[] data) {
+        splitting = false;
+        if (dying || !ShouldSplit()) {
+            return;
+        }
+
+        for(int i = 0; i < 8; ++i) {
+            children[i].BuildGameObject(data[i]);
+            children[i].obj.go.transform.parent = obj.go.transform;
+        }
+
+        //SetChildNeighbors();
+        UpdateNeighbors(true);
+        obj.mr.enabled = false;
         hasChildren = true;
     }
 
-    public void setChildNeighbors() {
+    public void SetChildNeighbors() {
         // need more updating for if higher rec neighbors are looking at you when you split
 
         //children[0].neighbors[0] = neighbors[0];
@@ -176,19 +204,19 @@ public class Octree {
         new int[] {4,5,6,7}
     };
 
-    private void updateNeighbors(bool splitting) {
+    private void UpdateNeighbors(bool splitting) {
 
     }
 
-    private bool shouldSplit() {
+    private bool ShouldSplit() {
         return depth < MAX_DEPTH && (vox.cam.position - center).sqrMagnitude < vox.squareSplitLevels[depth];
     }
 
-    private bool shouldMerge() {
-        return canMerge() && (vox.cam.position - center).sqrMagnitude > vox.squareSplitLevels[depth];
+    private bool ShouldMerge() {
+        return CanMerge() && (vox.cam.position - center).sqrMagnitude > vox.squareSplitLevels[depth];
     }
 
-    private bool canMerge() {
+    private bool CanMerge() {
         for (int i = 0; i < 8; i++) {
             if (children[i].hasChildren) {
                 return false;
@@ -198,17 +226,19 @@ public class Octree {
         return true;
     }
 
-    private void merge() {
-        updateNeighbors(false);
+    private void Merge() {
+        UpdateNeighbors(false);
         for (int i = 0; i < 8; i++) {
-            Object.Destroy(children[i].mesh);
+            UnityEngine.Object.Destroy(children[i].mesh);
+            SplitManager.ReturnObject(children[i].obj);
+            children[i].dying = true;
             children[i] = null;
         }
         hasChildren = false;
-        mr.enabled = true;
+        obj.mr.enabled = true;
     }
 
-    public void passVoxels(float[][][] v, int xo, int yo, int zo) {
+    public void PassVoxels(float[][][] v, int xo, int yo, int zo) {
         // PROB DOESNT WORK
         // because smoothing changes the voxels
         // wait F smoothing!!!
@@ -222,7 +252,7 @@ public class Octree {
         //}
     }
 
-    private Vector3 getChildOffset(int i) {
+    private static Vector3 GetChildOffset(int i) {
         switch (i) {
             case 0:
                 return new Vector3(1, 1, 1);
@@ -245,9 +275,8 @@ public class Octree {
         }
     }
 
-    public Bounds getBounds() {
+    public Bounds GetBounds() {
         return new Bounds(center, Vector3.one * voxelSize * SIZE);
     }
-
 
 }

@@ -110,6 +110,7 @@ public class MeshData {
     public Vector3[] vertices;
     public int[] triangles;
     public Vector3[] normals = null;
+    public Color32[] colors = null;
 
     public MeshData(Vector3[] vertices, int[] triangles) {
         this.vertices = vertices;
@@ -148,7 +149,16 @@ public class MeshData {
         //}
     }
 
-    public Mesh CreateMesh(Color32[] colors = null) {
+    public void CalculateColorsByDepth(int depth) {
+        Color32 col = Color.HSVToRGB(2f / 3f / Octree.MAX_DEPTH * (Octree.MAX_DEPTH - depth), 1f, 1f);
+        int size = vertices.Length;
+        colors = new Color32[size];
+        for (int i = 0; i < size; i++) {
+            colors[i] = col;
+        }
+    }
+
+    public Mesh CreateMesh() {
         Mesh mesh = new Mesh();
         mesh.vertices = vertices;
         mesh.triangles = triangles;
@@ -165,5 +175,21 @@ public class MeshData {
         mesh.colors32 = colors;
 
         return mesh;
+    }
+
+}
+
+public class SplitData {
+    public Octree tree;
+    public MeshData[] data;
+    private int i = 0;
+
+    public SplitData(Octree tree) {
+        this.tree = tree;
+        data = new MeshData[8];
+    }
+
+    public void Add(MeshData data) {
+        this.data[i++] = data;
     }
 }
