@@ -20,37 +20,22 @@ public static class WorldGenerator {
                 for (int z = s; z < size; z += s + 1) {
                     Vector3 worldPos = new Vector3(x, y, z) * voxelSize + pos;
 
+                    //voxels[x][y][z] = Density.Eval(worldPos);
+                    //continue;
+
                     float sqrMag = worldPos.sqrMagnitude;
-                    //float blend = 1f;
 
                     float freq = 0.01f;
                     double d = SimplexNoise.noise(worldPos.x * freq, worldPos.y * freq, worldPos.z * freq);
                     //WorleySample w = Noise.Worley3(worldPos.x * freq, worldPos.y * freq, worldPos.z * freq, 2, DistanceFunction.EUCLIDIAN);
                     //double d = w.F[1] - w.F[0];
-                    
-                    //d = (d + 1.0) / 2.0;
+
                     float surfHeight = radius;
                     surfHeight += (float)d * 20f;
 
-                    // need to figure out way to distribute smooth values over certain ranges
-                    // for each block type so it looks smooth
-                    // like give each block id a 0-1float range and blend between
-                    //if (sqrMag < surfHeight * surfHeight) {   // assumes world is at origin
-                    //    voxels[x][y][z] = (surfHeight * surfHeight - sqrMag)/1000f;
-                    //} else {
-                    //    voxels[x][y][z] = Mathf.Max(-1000f, (surfHeight * surfHeight - sqrMag))/1000f;
-                    //}
+                    voxels[x][y][z] = (sqrMag - surfHeight * surfHeight);
 
-                    // sqrt of 100,000 is around 300 so blending over that range
-                    // so what if voxels was a byte array then blend from 0-127 inside then 127-255 outside
-                    // and use each bit for lerping smoothly
-                    // need to factor in stride somehow too probly
-                    // because when low lod levels the distance to surface will be greater
-                    voxels[x][y][z] = (surfHeight * surfHeight - sqrMag) / 100000f;
-
-                    //voxels[x][y][z] = (float)d;
-
-                    voxels[x][y][z] = Mathf.Clamp(voxels[x][y][z], -1.0f, 1.0f);
+                    //voxels[x][y][z] = Mathf.Clamp(voxels[x][y][z], -1.0f, 1.0f);
                 }
             }
         }

@@ -3,15 +3,12 @@ using UnityEditor;
 
 public class VoxelBody : MonoBehaviour {
 
-
     public Material mat;
     public float[] squareSplitLevels;
     public Transform cam;
     public float radius = 500f;
 
     private Octree root = null;
-
-
 
     // Use this for initialization
     void Start() {

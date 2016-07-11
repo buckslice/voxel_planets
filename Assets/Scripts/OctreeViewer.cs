@@ -8,15 +8,19 @@ public class OctreeViewer : MonoBehaviour {
     public Bounds bounds;
     public Vector3 center;
     private Color c;
-    //private float r;
+    //private float r
+    public bool shouldDraw = false;
 
     void OnDrawGizmosSelected() {
-        Gizmos.color = c;
-        Gizmos.DrawWireCube(bounds.center, bounds.size);
-        //Gizmos.DrawSphere(center, r);
+        if (shouldDraw) {
+            Gizmos.color = c;
+            Gizmos.DrawWireCube(bounds.center, bounds.size);
+            //Gizmos.DrawSphere(center, r);
+        }
     }
 
     public void init(int depth, int branch, Vector3 center, Bounds bounds, Color c) {
+        shouldDraw = true;
         this.depth = depth;
         this.branch = branch;
         this.center = center;

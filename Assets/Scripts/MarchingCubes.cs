@@ -5,7 +5,7 @@ using System.Collections.Generic;
 static public class MarchingCubes {
 
     // start and end are used to add padding before and after basically
-    static public MeshData CalculateMeshData(float[][][] voxels, float voxelSize, int start = 0, int end = 0) {
+    public static MeshData CalculateMeshData(float[][][] voxels, float voxelSize, int start = 0, int end = 0) {
         List<Vector3> verts = new List<Vector3>();
         List<int> indices = new List<int>();
 
@@ -14,9 +14,11 @@ static public class MarchingCubes {
 
         float[] cube = new float[8];
 
-        for (int x = start; x < voxels.Length - 1 - end; x++) {
-            for (int y = start; y < voxels[0].Length - 1 - end; y++) {
-                for (int z = start; z < voxels[0][0].Length - 1 - end; z++) {
+        int endLen = voxels.Length - 1 - end;   // voxel array is always cube
+
+        for (int x = start; x < endLen; x++) {
+            for (int y = start; y < endLen; y++) {
+                for (int z = start; z < endLen; z++) {
                     //Get the values in the 8 neighbours which make up a cube
                     for (int i = 0; i < 8; i++) {
                         cube[i] = voxels[x + vertexOffset[i, 0]][y + vertexOffset[i, 1]][z + vertexOffset[i, 2]];
@@ -37,7 +39,7 @@ static public class MarchingCubes {
         float offset = 0.0f;
 
         //Find which vertices are inside of the surface and which are outside
-        for (i = 0; i < 8; i++) if (cube[i] <= target) flagIndex |= 1 << i;
+        for (i = 0; i < 8; i++) if (cube[i] > target) flagIndex |= 1 << i;
 
         //Find which edges are intersected by the surface
         int edgeFlags = cubeEdgeFlags[flagIndex];
@@ -90,8 +92,14 @@ static public class MarchingCubes {
 
     static int[,] vertexOffset = new int[,]
     {
-        {0, 0, 0},{1, 0, 0},{1, 1, 0},{0, 1, 0},
-        {0, 0, 1},{1, 0, 1},{1, 1, 1},{0, 1, 1}
+        {0, 0, 0},
+        {1, 0, 0},
+        {1, 1, 0},
+        {0, 1, 0},
+        {0, 0, 1},
+        {1, 0, 1},
+        {1, 1, 1},
+        {0, 1, 1}
     };
 
     // edgeConnection lists the index of the endpoint vertices for each of the 12 edges of the cube

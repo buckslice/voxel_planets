@@ -34,13 +34,8 @@ public static class Noise {
 
     const double DENSITY_ADJUSTMENT = 0.85;
 
-    static double atx, aty, atz;
-    static DistanceFunction distFunc;
-
     // max_order must be > 0
-    public static WorleySample Worley3(float x, float y, float z, uint max_order, DistanceFunction distanceFunction) {
-        distFunc = distanceFunction;
-
+    public static WorleySample Worley3(float x, float y, float z, uint max_order, DistanceFunction dFunc) {
         double[] F = new double[max_order];
         uint[] ID = new uint[max_order];
 
@@ -48,19 +43,20 @@ public static class Noise {
             F[i] = 999999.9;
         }
 
-        atx = x;
-        aty = y;
-        atz = z;
-        int iatx = fastfloor(atx);
-        int iaty = fastfloor(aty);
-        int iatz = fastfloor(atz);
+        double[] at = new double[3];
+        at[0] = x;
+        at[1] = y;
+        at[2] = z;
+        int iatx = fastfloor(at[0]);
+        int iaty = fastfloor(at[1]);
+        int iatz = fastfloor(at[2]);
 
         // test center cube first
-        AddSamples(iatx, iaty, iatz, max_order, F, ID);
+        AddSamples(iatx, iaty, iatz, max_order, F, ID, at, dFunc);
         // check if neighbor cubes are even possible by checking square distances
-        double x2 = atx - iatx;
-        double y2 = aty - iaty;
-        double z2 = atz - iatz;
+        double x2 = at[0] - iatx;
+        double y2 = at[1] - iaty;
+        double z2 = at[2] - iatz;
         double mx2 = (1.0 - x2) * (1.0 - x2);
         double my2 = (1.0 - y2) * (1.0 - y2);
         double mz2 = (1.0 - z2) * (1.0 - z2);
@@ -70,36 +66,36 @@ public static class Noise {
 
         //6 facing neighbors of center cube are closest
         // so they have greatest chance for feature point
-        if (x2 < F[max_order - 1]) AddSamples(iatx - 1, iaty, iatz, max_order, F, ID);
-        if (y2 < F[max_order - 1]) AddSamples(iatx, iaty - 1, iatz, max_order, F, ID);
-        if (z2 < F[max_order - 1]) AddSamples(iatx, iaty, iatz - 1, max_order, F, ID);
-        if (mx2 < F[max_order - 1]) AddSamples(iatx + 1, iaty, iatz, max_order, F, ID);
-        if (my2 < F[max_order - 1]) AddSamples(iatx, iaty + 1, iatz, max_order, F, ID);
-        if (mz2 < F[max_order - 1]) AddSamples(iatx, iaty, iatz + 1, max_order, F, ID);
+        if (x2 < F[max_order - 1]) AddSamples(iatx - 1, iaty, iatz, max_order, F, ID, at, dFunc);
+        if (y2 < F[max_order - 1]) AddSamples(iatx, iaty - 1, iatz, max_order, F, ID, at, dFunc);
+        if (z2 < F[max_order - 1]) AddSamples(iatx, iaty, iatz - 1, max_order, F, ID, at, dFunc);
+        if (mx2 < F[max_order - 1]) AddSamples(iatx + 1, iaty, iatz, max_order, F, ID, at, dFunc);
+        if (my2 < F[max_order - 1]) AddSamples(iatx, iaty + 1, iatz, max_order, F, ID, at, dFunc);
+        if (mz2 < F[max_order - 1]) AddSamples(iatx, iaty, iatz + 1, max_order, F, ID, at, dFunc);
 
         // next closest is 12 edge cubes
-        if (x2 + y2 < F[max_order - 1]) AddSamples(iatx - 1, iaty - 1, iatz, max_order, F, ID);
-        if (x2 + z2 < F[max_order - 1]) AddSamples(iatx - 1, iaty, iatz - 1, max_order, F, ID);
-        if (y2 + z2 < F[max_order - 1]) AddSamples(iatx, iaty - 1, iatz - 1, max_order, F, ID);
-        if (mx2 + my2 < F[max_order - 1]) AddSamples(iatx + 1, iaty + 1, iatz, max_order, F, ID);
-        if (mx2 + mz2 < F[max_order - 1]) AddSamples(iatx + 1, iaty, iatz + 1, max_order, F, ID);
-        if (my2 + mz2 < F[max_order - 1]) AddSamples(iatx, iaty + 1, iatz + 1, max_order, F, ID);
-        if (x2 + my2 < F[max_order - 1]) AddSamples(iatx - 1, iaty + 1, iatz, max_order, F, ID);
-        if (x2 + mz2 < F[max_order - 1]) AddSamples(iatx - 1, iaty, iatz + 1, max_order, F, ID);
-        if (y2 + mz2 < F[max_order - 1]) AddSamples(iatx, iaty - 1, iatz + 1, max_order, F, ID);
-        if (mx2 + y2 < F[max_order - 1]) AddSamples(iatx + 1, iaty - 1, iatz, max_order, F, ID);
-        if (mx2 + z2 < F[max_order - 1]) AddSamples(iatx + 1, iaty, iatz - 1, max_order, F, ID);
-        if (my2 + z2 < F[max_order - 1]) AddSamples(iatx, iaty + 1, iatz - 1, max_order, F, ID);
+        if (x2 + y2 < F[max_order - 1]) AddSamples(iatx - 1, iaty - 1, iatz, max_order, F, ID, at, dFunc);
+        if (x2 + z2 < F[max_order - 1]) AddSamples(iatx - 1, iaty, iatz - 1, max_order, F, ID, at, dFunc);
+        if (y2 + z2 < F[max_order - 1]) AddSamples(iatx, iaty - 1, iatz - 1, max_order, F, ID, at, dFunc);
+        if (mx2 + my2 < F[max_order - 1]) AddSamples(iatx + 1, iaty + 1, iatz, max_order, F, ID, at, dFunc);
+        if (mx2 + mz2 < F[max_order - 1]) AddSamples(iatx + 1, iaty, iatz + 1, max_order, F, ID, at, dFunc);
+        if (my2 + mz2 < F[max_order - 1]) AddSamples(iatx, iaty + 1, iatz + 1, max_order, F, ID, at, dFunc);
+        if (x2 + my2 < F[max_order - 1]) AddSamples(iatx - 1, iaty + 1, iatz, max_order, F, ID, at, dFunc);
+        if (x2 + mz2 < F[max_order - 1]) AddSamples(iatx - 1, iaty, iatz + 1, max_order, F, ID, at, dFunc);
+        if (y2 + mz2 < F[max_order - 1]) AddSamples(iatx, iaty - 1, iatz + 1, max_order, F, ID, at, dFunc);
+        if (mx2 + y2 < F[max_order - 1]) AddSamples(iatx + 1, iaty - 1, iatz, max_order, F, ID, at, dFunc);
+        if (mx2 + z2 < F[max_order - 1]) AddSamples(iatx + 1, iaty, iatz - 1, max_order, F, ID, at, dFunc);
+        if (my2 + z2 < F[max_order - 1]) AddSamples(iatx, iaty + 1, iatz - 1, max_order, F, ID, at, dFunc);
 
         // final 8 corners
-        if (x2 + y2 + z2 < F[max_order - 1]) AddSamples(iatx - 1, iaty - 1, iatz - 1, max_order, F, ID);
-        if (x2 + y2 + mz2 < F[max_order - 1]) AddSamples(iatx - 1, iaty - 1, iatz + 1, max_order, F, ID);
-        if (x2 + my2 + z2 < F[max_order - 1]) AddSamples(iatx - 1, iaty + 1, iatz - 1, max_order, F, ID);
-        if (x2 + my2 + mz2 < F[max_order - 1]) AddSamples(iatx - 1, iaty + 1, iatz + 1, max_order, F, ID);
-        if (mx2 + y2 + z2 < F[max_order - 1]) AddSamples(iatx + 1, iaty - 1, iatz - 1, max_order, F, ID);
-        if (mx2 + y2 + mz2 < F[max_order - 1]) AddSamples(iatx + 1, iaty - 1, iatz + 1, max_order, F, ID);
-        if (mx2 + my2 + z2 < F[max_order - 1]) AddSamples(iatx + 1, iaty + 1, iatz - 1, max_order, F, ID);
-        if (mx2 + my2 + mz2 < F[max_order - 1]) AddSamples(iatx + 1, iaty + 1, iatz + 1, max_order, F, ID);
+        if (x2 + y2 + z2 < F[max_order - 1]) AddSamples(iatx - 1, iaty - 1, iatz - 1, max_order, F, ID, at, dFunc);
+        if (x2 + y2 + mz2 < F[max_order - 1]) AddSamples(iatx - 1, iaty - 1, iatz + 1, max_order, F, ID, at, dFunc);
+        if (x2 + my2 + z2 < F[max_order - 1]) AddSamples(iatx - 1, iaty + 1, iatz - 1, max_order, F, ID, at, dFunc);
+        if (x2 + my2 + mz2 < F[max_order - 1]) AddSamples(iatx - 1, iaty + 1, iatz + 1, max_order, F, ID, at, dFunc);
+        if (mx2 + y2 + z2 < F[max_order - 1]) AddSamples(iatx + 1, iaty - 1, iatz - 1, max_order, F, ID, at, dFunc);
+        if (mx2 + y2 + mz2 < F[max_order - 1]) AddSamples(iatx + 1, iaty - 1, iatz + 1, max_order, F, ID, at, dFunc);
+        if (mx2 + my2 + z2 < F[max_order - 1]) AddSamples(iatx + 1, iaty + 1, iatz - 1, max_order, F, ID, at, dFunc);
+        if (mx2 + my2 + mz2 < F[max_order - 1]) AddSamples(iatx + 1, iaty + 1, iatz + 1, max_order, F, ID, at, dFunc);
 
         // We're done! Convert to right size scale
         for (int i = 0; i < max_order; i++) {
@@ -109,7 +105,7 @@ public static class Noise {
         return new WorleySample(F, ID);
     }
 
-    private static void AddSamples(int xi, int yi, int zi, uint max_order, double[] F, uint[] ID) {
+    private static void AddSamples(int xi, int yi, int zi, uint max_order, double[] F, uint[] ID, double[] at, DistanceFunction distFunc) {
         double dx, dy, dz, fx, fy, fz, d2;
         int count, index;
         uint seed, this_id;
@@ -132,9 +128,9 @@ public static class Noise {
             fz = (seed + 0.5) * (1.0 / 4294967296.0);
             seed = 1402024253 * seed + 586950981;
 
-            dx = xi + fx - atx;
-            dy = yi + fy - aty;
-            dz = zi + fz - atz;
+            dx = xi + fx - at[0];
+            dy = yi + fy - at[1];
+            dz = zi + fz - at[2];
 
             // get distance squared using specified function
             // this used to be using external functions and delegates but this way proved faster by around 30%

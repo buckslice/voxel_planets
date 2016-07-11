@@ -179,6 +179,20 @@ public class MeshData {
 
 }
 
+public class SplitInfo {
+    public Octree tree;
+    public Octree[] children;
+
+    public SplitInfo(Octree t) {
+        tree = t;
+        children = new Octree[8];
+        for (int i = 0; i < 8; ++i) {
+            Vector3 coeff = Octree.childOffsets[i];
+            children[i] = new Octree(t.vox, t.center + coeff * Octree.SIZE * t.voxelSize * 0.25f, t.depth + 1, i);
+        }
+    }
+}
+
 public class SplitData {
     public Octree tree;
     public MeshData[] data;
