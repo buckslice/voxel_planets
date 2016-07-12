@@ -39,7 +39,7 @@ static public class MarchingCubes {
         float offset = 0.0f;
 
         //Find which vertices are inside of the surface and which are outside
-        for (i = 0; i < 8; i++) if (cube[i] > target) flagIndex |= 1 << i;
+        for (i = 0; i < 8; i++) if (cube[i] <= target) flagIndex |= 1 << i;
 
         //Find which edges are intersected by the surface
         int edgeFlags = cubeEdgeFlags[flagIndex];

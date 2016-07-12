@@ -20,22 +20,8 @@ public static class WorldGenerator {
                 for (int z = s; z < size; z += s + 1) {
                     Vector3 worldPos = new Vector3(x, y, z) * voxelSize + pos;
 
-                    //voxels[x][y][z] = Density.Eval(worldPos);
-                    //continue;
+                    voxels[x][y][z] = Density.Eval(worldPos);
 
-                    float sqrMag = worldPos.sqrMagnitude;
-
-                    float freq = 0.01f;
-                    double d = SimplexNoise.noise(worldPos.x * freq, worldPos.y * freq, worldPos.z * freq);
-                    //WorleySample w = Noise.Worley3(worldPos.x * freq, worldPos.y * freq, worldPos.z * freq, 2, DistanceFunction.EUCLIDIAN);
-                    //double d = w.F[1] - w.F[0];
-
-                    float surfHeight = radius;
-                    surfHeight += (float)d * 20f;
-
-                    voxels[x][y][z] = (sqrMag - surfHeight * surfHeight);
-
-                    //voxels[x][y][z] = Mathf.Clamp(voxels[x][y][z], -1.0f, 1.0f);
                 }
             }
         }
