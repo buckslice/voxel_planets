@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-using System.Collections;
+using System.Collections.Generic;
 
 // much code here is based off of scrawkblogs marching cubes tutorial
 // and sebastian lagues proc gen youtube series
@@ -49,7 +49,7 @@ public static class VoxelUtils {
     }
 
     // takes in voxel array and MeshData vertices and returns array of mesh normals
-    public static Vector3[] CalculateMeshNormals(float[][][] voxels, float voxelSize, Vector3[] verts) {
+    public static Vector3[] CalculateSmoothNormals(float[][][] voxels, float voxelSize, List<Vector3> verts) {
         // calculates the normal of each voxel. If you have a 3d array of data
         // the normal is the derivitive of the x, y and z axis.
         // normally you need to flip the normal (*-1) but it is not needed in this case.
@@ -66,7 +66,7 @@ public static class VoxelUtils {
                 }
             }
         }
-        int numVerts = verts.Length;
+        int numVerts = verts.Count;
         Vector3[] meshNorms = new Vector3[numVerts];
         for (int i = 0; i < numVerts; ++i) {
             meshNorms[i] = TriLerpNormals(verts[i] / voxelSize, normals);
@@ -89,7 +89,7 @@ public static class VoxelUtils {
         float fz = p.z - z;
 
         int size = normals.Length;
-        Debug.Assert(x >= 0 && x < size && y >= 0 && y < size && z >= 0 && z < size);
+        //Debug.Assert(x >= 0 && x < size && y >= 0 && y < size && z >= 0 && z < size);
 
         Vector3 x0 = normals[x][y][z] * (1.0f - fx) + normals[x + 1][y][z] * fx;
         Vector3 x1 = normals[x][y][z + 1] * (1.0f - fx) + normals[x + 1][y][z + 1] * fx;
@@ -112,10 +112,21 @@ public class MeshData {
     public Vector3[] normals = null;
     public Color32[] colors = null;
 
-    public MeshData(Vector3[] vertices, int[] triangles) {
+    public MeshData(Vector3[] vertices) {
         this.vertices = vertices;
-        this.triangles = triangles;
+
+        // marching cubes indices are non shared and easy to generate
+        int len = vertices.Length;
+        triangles = new int[len];
+        for (int i = 0; i < len; ++i) {
+            triangles[i] = i;
+        }
     }
+
+    //public MeshData(List<Vector3> vertices, List<int> triangles) {
+    //    this.vertices = vertices;
+    //    this.triangles = triangles;
+    //}
 
     // this will calculate normals the conventional way
     // separating it out so we can do it before mesh is created
@@ -133,20 +144,90 @@ public class MeshData {
             Vector3 vc = vertices[c];
 
             Vector3 norm = Vector3.Cross(vb - va, vc - va).normalized;
+            //Vector3 norm = Vector3.Cross(vb - va, vc - va);
 
-            normals[a] = norm;
-            normals[b] = norm;
-            normals[c] = norm;
+            //normals[a] = norm;
+            //normals[b] = norm;
+            //normals[c] = norm;
 
-            // meshes from MarchingCubes dont have any triangle sharing so 
-            // no point in doing this or final normalization at end since will still be flat
-            //normals[a] += norm;
-            //normals[b] += norm;
-            //normals[c] += norm;
+            // only do this part and last part if using vertex sharing
+            normals[a] += norm;
+            normals[b] += norm;
+            normals[c] += norm;
         }
-        //for (int i = 0; i < norms.Length; ++i) {
-        //    normals[i].Normalize();
-        //}
+        for (int i = 0; i < normals.Length; ++i) {
+            normals[i].Normalize();
+        }
+    }
+
+    // removes duplicate verts and recalculates triangles
+    public void CalculateVertexSharing() {
+        Dictionary<Vector3, int> shared = new Dictionary<Vector3, int>();
+        List<Vector3> uniques = new List<Vector3>();
+        int len = vertices.Length; // default marching cubes triangles have no sharing
+        for (int i = 0; i < len; ++i) {
+            Vector3 v = vertices[i]; // normally it would be vertices[triangles[i]]
+            int index = 0;
+            if (!shared.TryGetValue(v, out index)) {    // cant find in dict so add new
+                index = uniques.Count;
+                shared[v] = index;
+                uniques.Add(v);
+            }   // else it was found so index will be correct
+            triangles[i] = index;
+        }
+        vertices = uniques.ToArray();
+
+    }
+
+    public void SplitEdgesCalcSmoothness() {
+        // at this point vertices are sharing and have smooth normals
+        int len = triangles.Length;
+
+        Vector3[] finalVerts = new Vector3[len];
+        Vector3[] finalNorms = new Vector3[len];
+
+        for (int i = 0; i < len; i += 3) {
+            int a = triangles[i];
+            int b = triangles[i + 1];
+            int c = triangles[i + 2];
+
+            Vector3 v1 = vertices[a];
+            Vector3 v2 = vertices[b];
+            Vector3 v3 = vertices[c];
+
+            Vector3 n1 = normals[a];
+            Vector3 n2 = normals[b];
+            Vector3 n3 = normals[c];
+
+            finalVerts[i] = v1;
+            finalVerts[i + 1] = v2;
+            finalVerts[i + 2] = v3;
+
+            Vector3 va = vertices[a];
+            Vector3 vb = vertices[b];
+            Vector3 vc = vertices[c];
+            Vector3 faceNormal = Vector3.Cross(vb - va, vc - va).normalized;
+
+            // make normal sharp if over 45 degrees and smooth if below 10
+            float minAngle = 10.0f;
+            float maxAngle = 30.0f;
+            float t1 = Mathf.InverseLerp(minAngle, maxAngle, Vector3.Angle(faceNormal, n1));
+            float t2 = Mathf.InverseLerp(minAngle, maxAngle, Vector3.Angle(faceNormal, n2));
+            float t3 = Mathf.InverseLerp(minAngle, maxAngle, Vector3.Angle(faceNormal, n3));
+
+            finalNorms[i] = Vector3.Lerp(n1, faceNormal, t1);
+            finalNorms[i + 1] = Vector3.Lerp(n2, faceNormal, t2);
+            finalNorms[i + 2] = Vector3.Lerp(n3, faceNormal, t3);
+
+            // reassign tris back no sharing mode
+            triangles[i] = i;
+            triangles[i + 1] = i + 1;
+            triangles[i + 2] = i + 2;
+        }
+
+        vertices = finalVerts;
+        normals = finalNorms;
+
     }
 
     public void CalculateColorsByDepth(int depth) {
@@ -159,6 +240,10 @@ public class MeshData {
     }
 
     public Mesh CreateMesh() {
+        if (vertices.Length == 0) {
+            return null;
+        }
+
         Mesh mesh = new Mesh();
         mesh.vertices = vertices;
         mesh.triangles = triangles;
@@ -169,28 +254,14 @@ public class MeshData {
             mesh.normals = normals;
         }
 
-        if (colors == null) {
-            colors = WorldGenerator.GenerateControlMap(normals);
+        if (colors != null) {
+            //colors = WorldGenerator.GenerateControlMap(normals);
+            mesh.colors32 = colors;
         }
-        mesh.colors32 = colors;
 
         return mesh;
     }
 
-}
-
-public class SplitInfo {
-    public Octree tree;
-    public Octree[] children;
-
-    public SplitInfo(Octree t) {
-        tree = t;
-        children = new Octree[8];
-        for (int i = 0; i < 8; ++i) {
-            Vector3 coeff = Octree.childOffsets[i];
-            children[i] = new Octree(t.vox, t.center + coeff * Octree.SIZE * t.voxelSize * 0.25f, t.depth + 1, i);
-        }
-    }
 }
 
 public class SplitData {

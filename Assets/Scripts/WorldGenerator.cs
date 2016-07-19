@@ -9,7 +9,7 @@ public static class WorldGenerator {
     // radius is radius of planet
     // position is starting position of quadtree
     public static float[][][] CreateVoxels(
-        int size, int depth, float voxelSize, float radius, Vector3 pos) {
+        int size, int depth, float voxelSize, Vector3 pos) {
 
         float[][][] voxels = VoxelUtils.Init3DArray<float>(size);
         

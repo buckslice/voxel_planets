@@ -47,14 +47,14 @@ public class Density  {
     public static float Eval(Vector3 worldPos) {
         float d = 0.0f;
 
-        float rad = 400.0f;
-        worldPos.y -= rad;
-        d += rad - (worldPos - new Vector3(0, -rad, 0)).magnitude;
+        //float rad = 400.0f;
+        //worldPos.y -= rad;
+        //d += rad - (worldPos - new Vector3(0, -rad, 0)).magnitude;
 
         //float warp = Noise.Simplex3(worldPos.x * 0.04f, worldPos.y * 0.04f, worldPos.z * 0.04f);
         //worldPos += Vector3.one * warp * 20;
 
-        d += Noise.Fractal3(worldPos, new Vector3(-100, 10, 25), 9, 0.009f, 0.45f, 2.07f) * 25.0f;
+        //d += Noise.Fractal3(worldPos, new Vector3(-100, 10, 25), 9, 0.009f, 0.45f, 2.07f) * 25.0;
 
         //d += (float)Noise.Simplex3(worldPos.x * 4.03, worldPos.y * 4.03, worldPos.z * 4.03) * 5f;
         //d += (float)Noise.Simplex3(worldPos.x * 1.96, worldPos.y * 1.96, worldPos.z * 1.96) * 0.5f;
@@ -63,22 +63,15 @@ public class Density  {
         //Quaternion q = Quaternion.AngleAxis(45.0f, Vector3.up);
         //worldPos = q * worldPos;
 
-        //float sphere = Sphere(worldPos, new Vector3(50.0f, 50.0f, 40.0f), 50.0f);
-        //float torus = Torus(worldPos, new Vector3(50.0f, 50.0f, -20.0f), new Vector2(50.0f, 20.0f));
-        //float cube = Cuboid(worldPos, new Vector3(0.0f, 100.0f, 0.0f), Vector3.one * 60.0f);
-        //float f = Mathf.Max(-cube, sphere);
-        //float f = Mathf.Max(-torus, cube);
-        //f = Mathf.Max(-sphere, f);
+        //float sphere = Sphere(worldPos, new Vector3(200.0f, 200.0f, 160.0f), 200.0f);
+        //float torus = Torus(worldPos, new Vector3(200.0f, 200.0f, -80.0f), new Vector2(200.0f, 80.0f));
+        //float cube = Cuboid(worldPos, new Vector3(0.0f, 400.0f, 0.0f), Vector3.one * 240.0f);
 
-        //float f = Mathf.Min(cube, torus);
-        //float f = 0.0f;
-        //f = Union(sphere, torus);
-        //f = Subtraction(f, cube);
+        //d = Union(sphere, torus);
+        //d = Subtraction(d, cube);
 
         // bounds of 64 size area
         //return Cuboid(worldPos, new Vector3(0.0f, 0.0f, 0.0f), Vector3.one * 32.0f);
-
-        //continue;
 
         //float sqrMag = worldPos.sqrMagnitude;
 
@@ -87,14 +80,8 @@ public class Density  {
         ////WorleySample w = Noise.Worley3(worldPos.x * freq, worldPos.y * freq, worldPos.z * freq, 2, DistanceFunction.EUCLIDIAN);
         ////double d = w.F[1] - w.F[0];
 
-        //float surfHeight = radius;
-        //surfHeight += (float)d * 20f;
-
-        //voxels[x][y][z] = (sqrMag - surfHeight * surfHeight);
-
-        //voxels[x][y][z] = Mathf.Clamp(voxels[x][y][z], -1.0f, 1.0f);
-
-
+        d = -worldPos.y + 20.0f;
+        d += Noise.Fractal3(worldPos, new Vector3(0, 25, 25), 9, 0.01f, 0.5f, 2.0f)*20.0f;
         return d;
     }
 

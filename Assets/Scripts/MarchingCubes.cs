@@ -7,7 +7,6 @@ static public class MarchingCubes {
     // start and end are used to add padding before and after basically
     public static MeshData CalculateMeshData(float[][][] voxels, float voxelSize, int start = 0, int end = 0) {
         List<Vector3> verts = new List<Vector3>();
-        List<int> indices = new List<int>();
 
         // used to be static but now in here so can be multithreaded
         Vector3[] edgeVertices = new Vector3[12];
@@ -24,22 +23,22 @@ static public class MarchingCubes {
                         cube[i] = voxels[x + vertexOffset[i, 0]][y + vertexOffset[i, 1]][z + vertexOffset[i, 2]];
                     }
                     //Perform algorithm
-                    MarchCube(new Vector4(x, y, z, voxelSize), cube, verts, indices, edgeVertices);
+                    MarchCube(new Vector4(x, y, z, voxelSize), cube, verts, edgeVertices);
                 }
             }
         }
 
-        return new MeshData(verts.ToArray(), indices.ToArray());
+        return new MeshData(verts.ToArray());
     }
 
     //MarchCube performs the Marching Cubes algorithm on a single cube
-    static void MarchCube(Vector4 pos, float[] cube, List<Vector3> vertList, List<int> indexList, Vector3[] edgeVertices) {
-        int i, j, vert, idx;
+    static void MarchCube(Vector4 pos, float[] cube, List<Vector3> vertList, Vector3[] edgeVertices) {
+        int i;
         int flagIndex = 0;
         float offset = 0.0f;
 
         //Find which vertices are inside of the surface and which are outside
-        for (i = 0; i < 8; i++) if (cube[i] <= target) flagIndex |= 1 << i;
+        for (i = 0; i < 8; i++) if (cube[i] < target) flagIndex |= 1 << i;
 
         //Find which edges are intersected by the surface
         int edgeFlags = cubeEdgeFlags[flagIndex];
@@ -69,13 +68,9 @@ static public class MarchingCubes {
         for (i = 0; i < 5; i++) {
             if (triangleConnectionTable[flagIndex, 3 * i] < 0) break;
 
-            idx = vertList.Count;
-
-            for (j = 0; j < 3; j++) {
-                vert = triangleConnectionTable[flagIndex, 3 * i + j];
-                indexList.Add(idx + windingOrder[j]);
-                vertList.Add(edgeVertices[vert]);
-            }
+            vertList.Add(edgeVertices[triangleConnectionTable[flagIndex, 3 * i]]);
+            vertList.Add(edgeVertices[triangleConnectionTable[flagIndex, 3 * i + 1]]);
+            vertList.Add(edgeVertices[triangleConnectionTable[flagIndex, 3 * i + 2]]);
         }
     }
 
@@ -85,7 +80,7 @@ static public class MarchingCubes {
     static float target = 0.0f;
 
     //Winding order of triangles use 2,1,0 or 0,1,2
-    static int[] windingOrder = new int[] { 0, 1, 2 };
+    //static int[] windingOrder = new int[] { 0, 1, 2 };
 
     // vertexOffset lists the positions, relative to vertex0, of each of the 8 vertices of a cube
     // vertexOffset[8][3]

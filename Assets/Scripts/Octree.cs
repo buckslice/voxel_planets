@@ -55,15 +55,20 @@ public class Octree {
     }
 
     public MeshData Generate() {
-        voxels = WorldGenerator.CreateVoxels(TSIZE, depth, voxelSize, vox.radius, pos);
+        voxels = WorldGenerator.CreateVoxels(TSIZE, depth, voxelSize, pos);
         //voxels = VoxelUtils.SmoothVoxels(voxels);
         //MeshData data = MarchingCubes.CalculateMeshData(voxels, voxelSize, 2, 2);
         MeshData data = MarchingCubes.CalculateMeshData(voxels, voxelSize);
 
-        data.CalculateNormals();
-        data.CalculateColorsByDepth(depth);
+        data.CalculateVertexSharing();
 
-        //data.normals = VoxelUtils.CalculateMeshNormals(voxels, voxelSize, data.vertices);
+        //Simplification simp = new Simplification(data.vertices, data.triangles);
+
+        data.CalculateNormals();
+        //data.SplitEdgesCalcSmoothness();
+        //data.normals = VoxelUtils.CalculateSmoothNormals(voxels, voxelSize, data.vertices);
+        //data.CalculateColorsByDepth(depth);
+
         return data;
     }
 
@@ -74,7 +79,6 @@ public class Octree {
     public void BuildGameObject(MeshData data) {
 
         mesh = data.CreateMesh();
-
         obj = SplitManager.GetObject();
 
         //StringBuilder builder = new StringBuilder();
@@ -88,17 +92,22 @@ public class Octree {
         //builder.Append(center.z);
         //obj.go.name = builder.ToString();
 
-        obj.mr.material = vox.mat;
-        obj.mf.mesh = mesh;
 
         obj.go.transform.parent = vox.transform;
         obj.go.transform.localPosition = pos;
+
+        if(mesh == null) {
+            return;
+        }
+
+        obj.mr.material = vox.mat;
+        obj.mf.mesh = mesh;
 
         if (depth == 0) {
             obj.ov.init(depth, branch, center, area, Color.blue);
         } else {
             obj.ov.init(depth, branch, center, area, Color.red);
-            obj.ov.shouldDraw = mesh.vertexCount > 0;
+            obj.ov.shouldDraw = true;
         }
 
         // wait to try out colliders for now

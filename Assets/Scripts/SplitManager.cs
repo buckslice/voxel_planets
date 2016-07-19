@@ -51,6 +51,7 @@ public class SplitManager : MonoBehaviour {
             mainSplitResults.RemoveAt(endIndex);
 
             sd.tree.SplitResolve(sd.data);
+            //UnityEngine.Debug.Log(Time.realtimeSinceStartup);
         }
 
         //if (Monitor.TryEnter(splitList)) {
