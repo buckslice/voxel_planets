@@ -1,82 +1,54 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 using System.Threading;
-using System.Diagnostics;
 using System.Threading.Tasks;
 
 public class SplitManager : MonoBehaviour {
     // shared list between main and worker thread of octrees to split
     public static List<Octree> splitList = new List<Octree>();
-    // shared list between main and worker thread of split results
-    public static List<SplitData> splitResults = new List<SplitData>();
-
-    // where pending splits are waiting to be added to splitList
-    public static List<Octree> mainSplitList = new List<Octree>();
-    // list of splitdatas for main thread to process
-    public static List<SplitData> mainSplitResults = new List<SplitData>();
+    public static List<Task<SplitData>> resolves = new List<Task<SplitData>>();
 
     public static Stack<ChunkObject> freeObjects = new Stack<ChunkObject>();
+    public static Stack<ColliderObject> freeColliders = new Stack<ColliderObject>();
 
-    private static Transform t;
-
-    private EventWaitHandle newItemEvent;
+    private static Transform tform;
 
     // Use this for initialization
     void Awake() {
-        t = FindObjectOfType<SplitManager>().transform;
-
-        newItemEvent = new AutoResetEvent(false);
-
-        //Thread workerThread = new Thread(ThreadProcedure);
-        //workerThread.IsBackground = true;
-        //workerThread.Start();
+        tform = FindObjectOfType<SplitManager>().transform;
     }
+
+    int activeTasks = 0;
 
     // Update is called once per frame
     void Update() {
-        // gather split results from worker thread
-        if (splitResults.Count > 0) {
-            lock (splitResults) {
-                for (int i = 0; i < splitResults.Count; ++i) {
-                    mainSplitResults.Add(splitResults[i]);
+        int newTasksPerFrame = 1;
+        while(splitList.Count > 0 && newTasksPerFrame-- > 0 && resolves.Count < 4) {
+            int endIndex = splitList.Count - 1;
+            Octree toSplit = splitList[endIndex];
+            splitList.RemoveAt(endIndex);
+            resolves.Add(toSplit.SplitAsync());
+        }
+
+        int resolutionsPerFrame = 1;
+        for(int i = 0; i < resolves.Count; ++i) {
+            if (resolves[i].IsCompleted) {
+                SplitData sd = resolves[i].Result;
+                sd.tree.SplitResolve(sd.data);
+                resolves.RemoveAt(i);
+                if (--resolutionsPerFrame == 0) {
+                    break;
                 }
-                splitResults.Clear();
+                --i;
             }
         }
-
-        // process split results
-        int splitsPerFrame = 1;
-        while (mainSplitResults.Count > 0 && splitsPerFrame-- > 0) {
-            int endIndex = mainSplitResults.Count - 1;
-            SplitData sd = mainSplitResults[endIndex];
-            mainSplitResults.RemoveAt(endIndex);
-
-            sd.tree.SplitResolve(sd.data);
-            //UnityEngine.Debug.Log(Time.realtimeSinceStartup);
-        }
-
-        //if (Monitor.TryEnter(splitList)) {
-        //    for (int i = 0; i < mainSplitList.Count; ++i) {
-        //        splitList.Add(mainSplitList[i]);
-        //    }
-        //    splitList.Sort(NearestToFarthest);
-        //    Monitor.Exit(splitList);
-        //    if (mainSplitList.Count > 0) {
-        //        newItemEvent.Set();
-        //    }
-        //    mainSplitList.Clear();
-        //}
-
-        if (mainSplitList.Count > 0) {
-            //mainSplitList.Sort(NearestToFarthest);
-            for (int i = 0; i < mainSplitList.Count; ++i) {
-                ThreadPool.QueueUserWorkItem(ThreadPoolProcedure, mainSplitList[i]);
-            }
-            mainSplitList.Clear();
-        }
-
     }
 
+    public static void AddToSplitList(Octree node) {
+        splitList.Add(node);
+    }
+
+    // todo reimplement these to generate closest first
     public int NearestToFarthest(Octree o1, Octree o2) {
         return o1.GetSqrDistToCam().CompareTo(o2.GetSqrDistToCam());
     }
@@ -96,68 +68,31 @@ public class SplitManager : MonoBehaviour {
         return new ChunkObject();
     }
 
+    public static ColliderObject GetCollider() {
+        if(freeColliders.Count > 0) {
+            ColliderObject free = freeColliders.Pop();
+            free.go.SetActive(true);
+            return free;
+        }
+
+        return new ColliderObject();
+    }
+
     public static void ReturnObject(ChunkObject obj) {
         obj.mr.enabled = true;
         obj.ov.shouldDraw = false;
         obj.go.SetActive(false);
-        obj.go.transform.parent = t;
-        if (obj.mc) {
-            Destroy(obj.mc);
-            obj.mc = null;
-        }
+        obj.go.transform.parent = tform;
 
         freeObjects.Push(obj);
     }
 
-    public static void AddToSplitList(Octree node) {
-        mainSplitList.Add(node);
-    }
+    public static void ReturnCollider(ColliderObject obj) {
+        obj.go.SetActive(false);
+        obj.go.transform.parent = tform;
+        obj.mc.sharedMesh = null;
 
-    public void ThreadPoolProcedure(System.Object o) {
-        Octree tree = (Octree)o;
-        SplitData data = tree.Split();
-        lock (splitResults) {
-            splitResults.Add(data);
-        }
-    }
-
-    public void ThreadProcedure() {
-        Stopwatch watch = new Stopwatch();
-        Stopwatch startTime = new Stopwatch();
-        startTime.Start();
-
-        List<Octree> threadSplitList = new List<Octree>();
-        List<SplitData> threadSplitResults = new List<SplitData>();
-        int splitOp = 0;
-        while (newItemEvent.WaitOne()) {
-            lock (splitList) {
-                for (int i = 0; i < splitList.Count; ++i) {
-                    threadSplitList.Add(splitList[i]);
-                }
-                splitList.Clear();
-            }
-
-            while (threadSplitList.Count > 0) {
-                int lastIndex = threadSplitList.Count - 1;
-                Octree o = threadSplitList[lastIndex];
-                threadSplitList.RemoveAt(lastIndex);
-
-                watch.Start();
-                SplitData data = o.Split();
-                watch.Stop();
-                UnityEngine.Debug.Log(startTime.Elapsed.TotalSeconds + " sec, " + watch.ElapsedMilliseconds + ", " + ++splitOp);
-                watch.Reset();
-
-                threadSplitResults.Add(data);
-            }
-
-            lock (splitResults) {
-                for (int i = 0; i < threadSplitResults.Count; ++i) {
-                    splitResults.Add(threadSplitResults[i]);
-                }
-            }
-            threadSplitResults.Clear();
-        }
+        freeColliders.Push(obj);
     }
 }
 
@@ -166,13 +101,22 @@ public class ChunkObject {
     public MeshRenderer mr;
     public MeshFilter mf;
     public OctreeViewer ov;
-    public MeshCollider mc;
 
     public ChunkObject() {
-        go = new GameObject();
+        go = new GameObject("Chunk");
         mf = go.AddComponent<MeshFilter>();
         mr = go.AddComponent<MeshRenderer>();
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
         ov = go.AddComponent<OctreeViewer>();
-        mc = null;
+    }
+}
+
+public class ColliderObject {
+    public GameObject go;
+    public MeshCollider mc;
+
+    public ColliderObject() {
+        go = new GameObject("Collider");
+        mc = go.AddComponent<MeshCollider>();
     }
 }

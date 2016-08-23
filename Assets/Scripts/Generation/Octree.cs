@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System.Threading.Tasks;
 
 public class Octree {
 
@@ -18,7 +19,8 @@ public class Octree {
     public readonly Vector3 center; // world space center of octree area
     public CelestialBody body;
 
-    public ChunkObject obj;
+    public ChunkObject obj = null;
+    public ColliderObject col = null;
 
     public const int SIZE = 16;        // size of visible voxel grid
     public const int TSIZE = SIZE + 5;   // total size with voxel border (done for normal smoothing)
@@ -56,13 +58,13 @@ public class Octree {
         MeshData data = MarchingCubes.CalculateMeshData(voxels, voxelSize, 2, 2);
         //MeshData data = MarchingCubes.CalculateMeshData(voxels, voxelSize);
          
-        data.CalculateVertexSharing();
+        //data.CalculateVertexSharing();
 
         //Simplification simp = new Simplification(data.vertices, data.triangles);
 
-        data.normals = VoxelUtils.CalculateSmoothNormals(voxels, voxelSize, data.vertices);
-        //data.CalculateNormals();
-        data.SplitEdgesCalcSmoothness();
+        //data.normals = VoxelUtils.CalculateSmoothNormals(voxels, voxelSize, data.vertices);
+        data.CalculateNormals();
+        //data.SplitEdgesCalcSmoothness();
 
         //data.CalculateColorsByDepth(depth);
 
@@ -126,15 +128,19 @@ public class Octree {
         } else if (!splitting && ShouldSplit()) {
             splitting = true;
             SplitManager.AddToSplitList(this);
-        } else{
-            if(depth == MAX_DEPTH && !obj.mc && obj.mf.sharedMesh &&
-               GetSqrDistToCam() < 100.0f * 100.0f) {
-                obj.mc = obj.go.AddComponent<MeshCollider>();
-                obj.mc.sharedMesh = obj.mf.sharedMesh;
-            }else if(obj.mc) {
-                Object.Destroy(obj.mc);
-                obj.mc = null;
+        }
+
+        // if at max depth, have valid mesh, and close to cam then spawn collider
+        if (depth == MAX_DEPTH && obj.mf.sharedMesh && GetSqrDistToCam() < 100.0f * 100.0f) {
+            if (col == null ) {
+                col = SplitManager.GetCollider();
+                col.go.transform.SetParent(obj.go.transform, false);
+                col.go.transform.localPosition = Vector3.zero;
+                col.mc.sharedMesh = obj.mf.sharedMesh;
             }
+        } else if (col != null) {   // otherwise if have collider then return it
+            SplitManager.ReturnCollider(col);
+            col = null;
         }
     }
 
@@ -147,28 +153,21 @@ public class Octree {
     //    }
     //    return null;
     //}
-
-    public SplitData Split() {
-        //Debug.Assert(depth <= MAX_DEPTH);
-
-        //Octree n = GetBlockingNeighbors();
-        //while (n != null) {
-        //    n.Split();
-        //    n = GetBlockingNeighbors();
-        //}
-
-        SplitData data = new SplitData(this);
-        children = new Octree[8];
-        for (int i = 0; i < 8; i++) {
-            Vector3 coff = childOffsets[i];
-            Octree child = new Octree(body, center + coff * SIZE * voxelSize * .25f, depth + 1, i);
-            //coff = ((coff + Vector3.one) / 2f) * (SIZE / 2f);
-            //o.passVoxels(voxels, (int)coff.x, (int)coff.y, (int)coff.z);
-            data.Add(child.Generate());
-            children[i] = child;
-        }
-
-        return data;
+    
+    public Task<SplitData> SplitAsync() {
+        return Task<SplitData>.Factory.StartNew(() => {
+            SplitData data = new SplitData(this);
+            children = new Octree[8];
+            for (int i = 0; i < 8; i++) {
+                Vector3 coff = childOffsets[i];
+                Octree child = new Octree(body, center + coff * SIZE * voxelSize * .25f, depth + 1, i);
+                //coff = ((coff + Vector3.one) / 2f) * (SIZE / 2f);
+                //o.passVoxels(voxels, (int)coff.x, (int)coff.y, (int)coff.z);
+                data.Add(child.Generate());
+                children[i] = child;
+            }
+            return data;
+        }, TaskCreationOptions.None);
     }
 
     public void SplitResolve(MeshData[] data) {
@@ -255,6 +254,10 @@ public class Octree {
         for (int i = 0; i < 8; i++) {
             Object.Destroy(children[i].obj.mf.mesh);
             SplitManager.ReturnObject(children[i].obj);
+            ColliderObject childCol = children[i].col;
+            if(childCol != null) {
+                SplitManager.ReturnCollider(childCol);
+            }
             children[i].dying = true;
             children[i] = null;
         }

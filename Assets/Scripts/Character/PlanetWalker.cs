@@ -85,8 +85,7 @@ public class PlanetWalker : MonoBehaviour {
         float inputModifyFactor = (inputRight != 0.0f && inputForward != 0.0f) ? .7071f : 1.0f;
         inputRight *= inputModifyFactor;
         inputForward *= inputModifyFactor;
-        //float inputUp = Input.GetAxis("Up");
-        float inputUp = 0.0f;
+        float inputUp = Input.GetButton("Jump") ? 1.0f : 0.0f;
 
         if (Input.GetKeyDown(KeyCode.F1)) {
             freeFlightMode = !freeFlightMode;
