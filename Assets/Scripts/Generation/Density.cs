@@ -48,7 +48,7 @@ public class Density  {
         float d = 0.0f;
 
         // FRACTAL PLANET ----------------------------------------------------------------
-        float rad = 400.0f;
+        float rad = 800.0f;
         worldPos.y -= rad;
         d += rad - (worldPos - new Vector3(0, -rad, 0)).magnitude;
         d += Noise.Fractal3(worldPos, new Vector3(-100, 10, 25), 9, 0.009f, 0.45f, 2.07f) * 25.0f;

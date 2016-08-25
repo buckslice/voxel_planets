@@ -30,7 +30,7 @@ public class PlanetWalker : MonoBehaviour {
     private float inputRight;
     private float inputForward;
     private float currentFlightSpeed;
-    private float targetFlightSpeed = 2000f;
+    private float targetFlightSpeed = 50f;
     private float curHoriz;
     private float curVerti;
 

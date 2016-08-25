@@ -1,5 +1,9 @@
-﻿using UnityEngine;
+﻿
+//#define SMOOTH_SHADING
+
+using UnityEngine;
 using System.Threading.Tasks;
+
 
 public class Octree {
 
@@ -22,49 +26,52 @@ public class Octree {
     public ChunkObject obj = null;
     public ColliderObject col = null;
 
-    public const int SIZE = 16;        // size of visible voxel grid
-    public const int TSIZE = SIZE + 5;   // total size with voxel border (done for normal smoothing)
-    //public const int TSIZE = SIZE + 1;
-    // so while size is 16, which means theres 16 blocks 
-    // you need 17 verts to store those blocks (think of 17 points in a grid and the blocks are the 16 white space in between)
-    // then add a buffer of 2 around (front and back so +4) for smoothing and normal calculation
-    // so mesh goes from 2-19 basically (0 1, 20, 21) are not visible in final result
-
+    public const int SIZE = 16;        // number of voxel cells in octree
     public const int MAX_DEPTH = 6;     // max depth meshes can split to
-    public float voxelSize;   // size of each voxel for this tree (in meters)
+    public readonly float voxelSize;   // size of each voxel for this tree (in meters)
 
     public Bounds area; // bounding box for area this tree represents (gonna be bad.. once planets can rotate lol)
     //private Bounds meshBounds;
 
-    private bool splitting = false; // set when a tree is trying to split
+    public bool splitting = false; // set when a tree is waiting on list/currently being split
     private bool dying = false; // gets set when a child is merged into parent
 
     public Octree(CelestialBody body, Vector3 center, int depth, int branch) {
         this.body = body;
+        this.center = center;
         this.depth = depth;
         this.branch = branch;
-        voxelSize = Mathf.Pow(2, (MAX_DEPTH - depth));
+        voxelSize = Mathf.Pow(2, (MAX_DEPTH - depth)) * 2.0f;
 
-        this.center = center;
+#if (SMOOTH_SHADING)
         pos = center - new Vector3(2, 2, 2) * voxelSize - Vector3.one * (SIZE / 2f) * voxelSize;
-        //pos = center - Vector3.one * (SIZE / 2f) * voxelSize;
+#else
+        pos = center - Vector3.one * (SIZE / 2f) * voxelSize;
+#endif
 
         area = new Bounds(center, Vector3.one * voxelSize * SIZE);
     }
 
     public MeshData Generate() {
-        voxels = WorldGenerator.CreateVoxels(TSIZE, depth, voxelSize, pos);
         //voxels = VoxelUtils.SmoothVoxels(voxels);
+
+        // so while SIZE is 16, which means theres 16 cells/blocks in grid 
+        // you need 17 values to be able to construct those blocks
+        // (think of 17 points in a grid and the blocks are the 16 spaces in between)
+        // if smoothing then need a buffer of 2 around (front and back so +4) for smoothing and normal calculation
+        // (so mesh goes from 2-19 basically (0, 1, 20, 21) are not visible in final result)
+#if (SMOOTH_SHADING)
+        voxels = WorldGenerator.CreateVoxels(SIZE + 5, depth, voxelSize, pos);
         MeshData data = MarchingCubes.CalculateMeshData(voxels, voxelSize, 2, 2);
-        //MeshData data = MarchingCubes.CalculateMeshData(voxels, voxelSize);
-         
         //data.CalculateVertexSharing();
-
         //Simplification simp = new Simplification(data.vertices, data.triangles);
-
-        //data.normals = VoxelUtils.CalculateSmoothNormals(voxels, voxelSize, data.vertices);
-        data.CalculateNormals();
+        data.normals = VoxelUtils.CalculateSmoothNormals(voxels, voxelSize, data.vertices);
         //data.SplitEdgesCalcSmoothness();
+#else
+        voxels = WorldGenerator.CreateVoxels(SIZE + 1, depth, voxelSize, pos);
+        MeshData data = MarchingCubes.CalculateMeshData(voxels, voxelSize);
+        data.CalculateNormals();
+#endif
 
         //data.CalculateColorsByDepth(depth);
 
@@ -110,10 +117,6 @@ public class Octree {
             obj.ov.init(depth, branch, center, area, Color.red);
         }
 
-        // wait to try out colliders for now
-        //MeshCollider collider = m_mesh.AddComponent<MeshCollider>();
-        //collider.sharedMesh = mesh;
-
     }
 
     public void Update() {
@@ -130,9 +133,9 @@ public class Octree {
             SplitManager.AddToSplitList(this);
         }
 
-        // if at max depth, have valid mesh, and close to cam then spawn collider
+        // if at max depth, have valid mesh, and close to cam then should have a collider
         if (depth == MAX_DEPTH && obj.mf.sharedMesh && GetSqrDistToCam() < 100.0f * 100.0f) {
-            if (col == null ) {
+            if (col == null ) {     // if collider is null then spawn one
                 col = SplitManager.GetCollider();
                 col.go.transform.SetParent(obj.go.transform, false);
                 col.go.transform.localPosition = Vector3.zero;
@@ -147,13 +150,13 @@ public class Octree {
     //public Octree GetBlockingNeighbors() {
     //    for (int i = 0; i < 6; i++) {
     //        Octree tree = neighbors[i];
-    //        if (tree != null && tree.depth < depth && !tree.splitting) {
+    //        if (tree != null && tree.depth < depth && !tree.onSplitList) {
     //            return tree;
     //        }
     //    }
     //    return null;
     //}
-    
+
     public Task<SplitData> SplitAsync() {
         return Task<SplitData>.Factory.StartNew(() => {
             SplitData data = new SplitData(this);
@@ -172,7 +175,7 @@ public class Octree {
 
     public void SplitResolve(MeshData[] data) {
         splitting = false;
-        if (dying || !ShouldSplit()) {
+        if (!ShouldSplit()) {
             return;
         }
 
@@ -231,8 +234,8 @@ public class Octree {
         return (body.cam.position - center).sqrMagnitude;
     }
 
-    private bool ShouldSplit() {
-        return depth < MAX_DEPTH && GetSqrDistToCam() < body.squareSplitLevels[depth];
+    public bool ShouldSplit() {
+        return depth < MAX_DEPTH && GetSqrDistToCam() < body.squareSplitLevels[depth] && !dying;
     }
 
     private bool ShouldMerge() {

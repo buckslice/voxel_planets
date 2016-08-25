@@ -19,8 +19,8 @@ public class CelestialBody : MonoBehaviour {
 
         squareSplitLevels = new float[Octree.MAX_DEPTH + 1];
         for (int i = 0; i < squareSplitLevels.Length; i++) {
-            squareSplitLevels[i] = Mathf.Pow(2f, Octree.MAX_DEPTH - i) * 50f;
-            squareSplitLevels[i] *= squareSplitLevels[i];
+            float level = Mathf.Pow(2f, Octree.MAX_DEPTH - i) * 100f;
+            squareSplitLevels[i] = level * level;
         }
         cam = Camera.main.transform;
     }

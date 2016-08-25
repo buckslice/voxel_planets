@@ -18,28 +18,56 @@ public class SplitManager : MonoBehaviour {
         tform = FindObjectOfType<SplitManager>().transform;
     }
 
-    int activeTasks = 0;
-
+    int totalResolved = 0;
+    
     // Update is called once per frame
     void Update() {
         int newTasksPerFrame = 1;
-        while(splitList.Count > 0 && newTasksPerFrame-- > 0 && resolves.Count < 4) {
-            int endIndex = splitList.Count - 1;
-            Octree toSplit = splitList[endIndex];
-            splitList.RemoveAt(endIndex);
-            resolves.Add(toSplit.SplitAsync());
+        while(splitList.Count > 0 && newTasksPerFrame > 0 && resolves.Count < 8) {
+            // find octree closest to cam and split that
+            int count = splitList.Count;
+            int endIndex = count - 1;
+            float closestDist = float.MaxValue;
+            int closestIndex = endIndex;
+            for(int i = 0; i < count; ++i) {
+                float dist = splitList[i].GetSqrDistToCam();
+                if (dist < closestDist) {
+                    closestIndex = i;
+                    closestDist = dist;
+                }
+            }
+
+            Octree toSplit = splitList[closestIndex];
+            if (count > 1) {    // remove from list fast
+                splitList[closestIndex] = splitList[endIndex];
+                splitList.RemoveAt(endIndex);
+            } else {
+                splitList.Clear();
+            }
+
+            // one last check before queueing up task
+            if (toSplit.ShouldSplit()) {
+                resolves.Add(toSplit.SplitAsync());
+                --newTasksPerFrame;
+            } else {    // otherwise just remove from list
+                toSplit.splitting = false;
+            }
+            
         }
 
+        // check and resolve tasks that are complete
         int resolutionsPerFrame = 1;
-        for(int i = 0; i < resolves.Count; ++i) {
+        for(int i = 0; i < resolves.Count;) {
             if (resolves[i].IsCompleted) {
+                //Debug.Log("resolved: " + ++totalResolved);
                 SplitData sd = resolves[i].Result;
                 sd.tree.SplitResolve(sd.data);
                 resolves.RemoveAt(i);
-                if (--resolutionsPerFrame == 0) {
+                if (--resolutionsPerFrame <= 0) {
                     break;
                 }
-                --i;
+            } else {
+                ++i;
             }
         }
     }
