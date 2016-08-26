@@ -119,7 +119,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bcb54d5f7e755b747bb8621daae8d199, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mat: {fileID: 2100000, guid: be35973543b563f48be5fef6a074ae2f, type: 2}
+  mat: {fileID: 2100000, guid: f720fa7552efe2d4f951aa61e8e11eba, type: 2}
   squareSplitLevels: []
   cam: {fileID: 0}
   surfaceRadius: 500

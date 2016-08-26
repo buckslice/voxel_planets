@@ -129,6 +129,7 @@ public class ChunkObject {
     public MeshRenderer mr;
     public MeshFilter mf;
     public OctreeViewer ov;
+    public MaterialPropertyBlock mpb;
 
     public ChunkObject() {
         go = new GameObject("Chunk");
@@ -136,6 +137,12 @@ public class ChunkObject {
         mr = go.AddComponent<MeshRenderer>();
         mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
         ov = go.AddComponent<OctreeViewer>();
+        mpb = new MaterialPropertyBlock();
+    }
+
+    public void SetTransparency(float t) {
+        mpb.SetFloat("_Transparency", t);
+        mr.SetPropertyBlock(mpb);
     }
 }
 

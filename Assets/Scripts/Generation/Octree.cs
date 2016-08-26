@@ -34,7 +34,10 @@ public class Octree {
     //private Bounds meshBounds;
 
     public bool splitting = false; // set when a tree is waiting on list/currently being split
-    private bool dying = false; // gets set when a child is merged into parent
+    private bool dying = false;    // gets set when a child is merged into parent
+
+    public const float fadeRate = 1.0f; // 0.5f would be half of normal time, so 2 seconds
+    private float morphProg = 0.0f;   // "percent morphed" 0 at morph start, 1 when morph is finished
 
     public Octree(CelestialBody body, Vector3 center, int depth, int branch) {
         this.body = body;
@@ -121,6 +124,7 @@ public class Octree {
 
     public void Update() {
         if (hasChildren) {
+            GeoMorphInternal();
             if (ShouldMerge()) {
                 Merge();
             } else {
@@ -131,19 +135,46 @@ public class Octree {
         } else if (!splitting && ShouldSplit()) {
             splitting = true;
             SplitManager.AddToSplitList(this);
-        }
-
-        // if at max depth, have valid mesh, and close to cam then should have a collider
-        if (depth == MAX_DEPTH && obj.mf.sharedMesh && GetSqrDistToCam() < 100.0f * 100.0f) {
-            if (col == null ) {     // if collider is null then spawn one
-                col = SplitManager.GetCollider();
-                col.go.transform.SetParent(obj.go.transform, false);
-                col.go.transform.localPosition = Vector3.zero;
-                col.mc.sharedMesh = obj.mf.sharedMesh;
+        } else {
+            GeoMorphLeaf();
+            // if at max depth, have valid mesh, and close to cam then should have a collider
+            if (depth == MAX_DEPTH && obj.mf.sharedMesh && GetSqrDistToCam() < 100.0f * 100.0f) {
+                if (col == null) {     // if collider is null then spawn one
+                    col = SplitManager.GetCollider();
+                    col.go.transform.SetParent(obj.go.transform, false);
+                    col.go.transform.localPosition = Vector3.zero;
+                    col.mc.sharedMesh = obj.mf.sharedMesh;
+                }
+            } else if (col != null) {   // otherwise if have collider then return it
+                SplitManager.ReturnCollider(col);
+                col = null;
             }
-        } else if (col != null) {   // otherwise if have collider then return it
-            SplitManager.ReturnCollider(col);
-            col = null;
+
+        }
+    }
+
+    // 0 -> 0.5 fade children in
+    // 0.5 -> 1.0 fade parent out
+    private void GeoMorphInternal() { 
+        if(morphProg < 1.0f) {
+            morphProg += Time.deltaTime * fadeRate;
+            if (morphProg >= 1.0f) {
+                obj.mr.enabled = false;
+            } else if(morphProg >= 0.5f) {
+                obj.SetTransparency((1.0f - morphProg) * 2.0f);
+                // todo set cast shadow strength here as well!
+            }
+        }
+    }
+    private void GeoMorphLeaf() {
+        if(morphProg < 0.5f) {
+            morphProg += Time.deltaTime * fadeRate;
+            if(morphProg >= 0.5f) {
+                obj.SetTransparency(1.0f);
+                morphProg = 1.01f;
+            } else {
+                obj.SetTransparency(morphProg * 2.0f);
+            }
         }
     }
 
@@ -179,14 +210,18 @@ public class Octree {
             return;
         }
 
+        float curTime = Time.time;
         for (int i = 0; i < 8; ++i) {
-            children[i].BuildGameObject(data[i]);
-            children[i].obj.go.transform.parent = obj.go.transform;
+            Octree c = children[i];
+            c.BuildGameObject(data[i]);
+            c.obj.go.transform.parent = obj.go.transform;
+            c.obj.SetTransparency(0.0f);
         }
+        obj.SetTransparency(1.0f);
+        morphProg = 0.0f;
 
         //SetChildNeighbors();
         UpdateNeighbors(true);
-        obj.mr.enabled = false;
         if (depth > 0) {
             obj.ov.shouldDraw = false;
         }
@@ -234,8 +269,12 @@ public class Octree {
         return (body.cam.position - center).sqrMagnitude;
     }
 
+    // can only split if
+    //    depth is less than max depth
+    //    not dying
+    //    fully opaque
     public bool ShouldSplit() {
-        return depth < MAX_DEPTH && GetSqrDistToCam() < body.squareSplitLevels[depth] && !dying;
+        return depth < MAX_DEPTH && !dying && morphProg >= 1.0f && GetSqrDistToCam() < body.squareSplitLevels[depth];
     }
 
     private bool ShouldMerge() {
@@ -243,32 +282,41 @@ public class Octree {
     }
 
     private bool CanMerge() {
-        for (int i = 0; i < 8; i++) {
-            if (children[i].hasChildren) {
-                return false;
-            }
-        }
-        // or if childrens neighbor has children?
-        return true;
+        return !children[0].hasChildren
+            && !children[1].hasChildren
+            && !children[2].hasChildren
+            && !children[3].hasChildren
+            && !children[4].hasChildren
+            && !children[5].hasChildren
+            && !children[6].hasChildren
+            && !children[7].hasChildren;
     }
 
+    // called when parent merges 8 children
     private void Merge() {
         UpdateNeighbors(false);
         for (int i = 0; i < 8; i++) {
-            Object.Destroy(children[i].obj.mf.mesh);
-            SplitManager.ReturnObject(children[i].obj);
-            ColliderObject childCol = children[i].col;
-            if(childCol != null) {
-                SplitManager.ReturnCollider(childCol);
-            }
-            children[i].dying = true;
+            children[i].OnGettingMerged();
             children[i] = null;
         }
         hasChildren = false;
         obj.mr.enabled = true;
+        morphProg = 1.0f;
+        obj.SetTransparency(morphProg);
         if (obj.mf.mesh.vertexCount > 0) {
             obj.ov.shouldDraw = true;
         }
+    }
+
+    // called on children getting merged by their parent
+    private void OnGettingMerged() {
+        Object.Destroy(obj.mf.mesh);
+        SplitManager.ReturnObject(obj);
+        if (col != null) {
+            SplitManager.ReturnCollider(col);
+            col = null;
+        }
+        dying = true;
     }
 
     public void PassVoxels(float[][][] v, int xo, int yo, int zo) {
