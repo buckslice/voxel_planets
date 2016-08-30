@@ -114,6 +114,9 @@ public class MeshData {
     public Vector3[] normals = null;
     public Color32[] colors = null;
 
+    public MeshData() {
+    }
+
     public MeshData(Vector3[] vertices) {
         this.vertices = vertices;
 
@@ -123,6 +126,11 @@ public class MeshData {
         for (int i = 0; i < len; ++i) {
             triangles[i] = i;
         }
+    }
+
+    public MeshData(Vector3[] vertices, int[] indices) {
+        this.vertices = vertices;
+        this.triangles = indices;
     }
 
     //public MeshData(List<Vector3> vertices, List<int> triangles) {
@@ -278,4 +286,33 @@ public class SplitData {
     public void Add(MeshData data) {
         this.data[i++] = data;
     }
+}
+
+
+public class MeshBuilder {
+    private List<int> indices = new List<int>();
+    private List<Vector3> vertices = new List<Vector3>();
+    //private List<Vector3> normals = new List<Vector3>();
+    
+    public void AddIndex(int i) {
+        indices.Add(i);
+    }
+
+    public void AddVertex(Vector3 v) {//, Vector3 n) {
+        vertices.Add(v);
+        //normals.Add(n);
+    }
+
+    public int GetLastAddedVertIndex() {
+        return vertices.Count - 1;
+    }
+
+    public MeshData ToMeshData() {
+        MeshData data = new MeshData();
+        data.vertices = vertices.ToArray();
+        //data.normals = normals.ToArray();
+        data.triangles = indices.ToArray();
+        return data;
+    }
+
 }

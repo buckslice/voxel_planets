@@ -2,43 +2,50 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
-static public class MarchingCubes {
+public static class MarchingCubes {
 
     // start and end are used to add padding before and after basically
-    public static MeshData CalculateMeshData(float[][][] voxels, float voxelSize, int start = 0, int end = 0) {
+    public static MeshData CalculateMeshData(Array3<sbyte> voxels, float voxelSize, int start = 0, int end = 0) {
         List<Vector3> verts = new List<Vector3>();
+        List<int> tris = new List<int>();
 
         // used to be static but now in here so can be multithreaded
         Vector3[] edgeVertices = new Vector3[12];
 
-        float[] cube = new float[8];
+        sbyte[] density = new sbyte[8];
 
-        int endLen = voxels.Length - 1 - end;   // voxel array is always cube
+        int endLen = voxels.size - 1 - end;   // voxel array is always cube
 
         for (int x = start; x < endLen; x++) {
             for (int y = start; y < endLen; y++) {
                 for (int z = start; z < endLen; z++) {
-                    //Get the values in the 8 neighbours which make up a cube
+                    // get density values of 8 corners for each cube
                     for (int i = 0; i < 8; i++) {
-                        cube[i] = voxels[x + vertexOffset[i, 0]][y + vertexOffset[i, 1]][z + vertexOffset[i, 2]];
+                        density[i] = voxels[
+                            x + vertexOffset[i, 0],
+                            y + vertexOffset[i, 1],
+                            z + vertexOffset[i, 2]];
                     }
-                    //Perform algorithm
-                    MarchCube(new Vector4(x, y, z, voxelSize), cube, verts, edgeVertices);
+                    MarchCube(new Vector4(x, y, z, voxelSize), density, verts, edgeVertices);
+                    //PolygonizeCell(new Vector3i(x, y, z), density, verts);
+                    //TransvoxelExtractor.PolygonizeRegularCell(new Vector3i(x, y, z), voxels, verts, tris);
+
                 }
             }
         }
 
         return new MeshData(verts.ToArray());
+        //return new MeshData(verts.ToArray(), tris.ToArray());
     }
 
     //MarchCube performs the Marching Cubes algorithm on a single cube
-    static void MarchCube(Vector4 pos, float[] cube, List<Vector3> vertList, Vector3[] edgeVertices) {
+    static void MarchCube(Vector4 pos, sbyte[] density, List<Vector3> vertList, Vector3[] edgeVertices) {
         int i;
         int flagIndex = 0;
         float offset = 0.0f;
 
         //Find which vertices are inside of the surface and which are outside
-        for (i = 0; i < 8; i++) if (cube[i] < target) flagIndex |= 1 << i;
+        for (i = 0; i < 8; i++) if (density[i] < isoLevel) flagIndex |= 1 << i;
 
         //Find which edges are intersected by the surface
         int edgeFlags = cubeEdgeFlags[flagIndex];
@@ -51,10 +58,10 @@ static public class MarchingCubes {
             //if there is an intersection on this edge
             if ((edgeFlags & (1 << i)) != 0) {
                 // find approximate point of intersection of the surface between two points
-                float v1 = cube[edgeConnection[i, 0]];
-                float v2 = cube[edgeConnection[i, 1]];
-                float delta = v2 - v1;
-                offset = (delta == 0.0f) ? 0.5f : (target - v1) / delta;
+                float v1 = density[edgeConnection[i, 0]];
+                float v2 = density[edgeConnection[i, 1]];
+                float delta = (v2 - v1);
+                offset = (delta == 0.0f) ? 0.5f : (isoLevel - v1) / delta;
 
                 edgeVertices[i].x = pos.x + (vertexOffset[edgeConnection[i, 0], 0] + offset * edgeDirection[i, 0]);
                 edgeVertices[i].y = pos.y + (vertexOffset[edgeConnection[i, 0], 1] + offset * edgeDirection[i, 1]);
@@ -77,7 +84,7 @@ static public class MarchingCubes {
     //Target is the value that represents the surface of mesh
     //For example a range of -1 to 1, 0 would be the mid point were we want the surface to cut through
     //The target value does not have to be the mid point it can be any value with in the range
-    static float target = 0.0f;
+    public static float isoLevel = 0.0f;
 
     //Winding order of triangles use 2,1,0 or 0,1,2
     //static int[] windingOrder = new int[] { 0, 1, 2 };

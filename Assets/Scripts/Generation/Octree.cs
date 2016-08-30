@@ -16,11 +16,11 @@ public class Octree {
     public int depth;  // 0 is root, MAX_LEVEL is depth limit
     private int branch;  // which child of your parent are you
 
-    private float[][][] voxels;
+    private Array3<sbyte> voxels; // need to save for vertex modification
 
     private Vector3 pos;    // position of voxel grid (denotes the corner so it gets offset to remain centered)
-                            //private CelestialBody cb;
     public readonly Vector3 center; // world space center of octree area
+
     public CelestialBody body;
 
     public ChunkObject obj = null;
@@ -45,6 +45,8 @@ public class Octree {
         this.depth = depth;
         this.branch = branch;
         voxelSize = Mathf.Pow(2, (MAX_DEPTH - depth)) * 2.0f;
+        // voxel are 2m^3 at max depth
+        // then 4, 8, 16, etc
 
 #if (SMOOTH_SHADING)
         pos = center - new Vector3(2, 2, 2) * voxelSize - Vector3.one * (SIZE / 2f) * voxelSize;
@@ -55,7 +57,7 @@ public class Octree {
         area = new Bounds(center, Vector3.one * voxelSize * SIZE);
     }
 
-    public MeshData Generate() {
+    public MeshData GenerateMesh() {
         //voxels = VoxelUtils.SmoothVoxels(voxels);
 
         // so while SIZE is 16, which means theres 16 cells/blocks in grid 
@@ -71,13 +73,17 @@ public class Octree {
         data.normals = VoxelUtils.CalculateSmoothNormals(voxels, voxelSize, data.vertices);
         //data.SplitEdgesCalcSmoothness();
 #else
-        voxels = WorldGenerator.CreateVoxels(SIZE + 1, depth, voxelSize, pos);
+        bool needsMesh;
+        voxels = WorldGenerator.CreateVoxels(SIZE + 1, depth, voxelSize, pos, out needsMesh);
+        if (!needsMesh) {
+            return null;
+        }
+
         MeshData data = MarchingCubes.CalculateMeshData(voxels, voxelSize);
         data.CalculateNormals();
 #endif
 
         //data.CalculateColorsByDepth(depth);
-
         return data;
     }
 
@@ -85,9 +91,15 @@ public class Octree {
     // most other work is offloaded to helper threads. builds mesh and game object
     // dont actually need to build a gameobject if theres no mesh...
     // or at least have an empty object for the parent transform and dont attach components
+    static int meshlessboys = 0;
     public void BuildGameObject(MeshData data) {
+        Mesh mesh = null;
 
-        Mesh mesh = data.CreateMesh();
+        if (data != null) {
+            mesh = data.CreateMesh();
+        } else {
+            //Debug.Log(++meshlessboys);
+        }
         obj = SplitManager.GetObject();
 
         //StringBuilder builder = new StringBuilder();
@@ -105,7 +117,7 @@ public class Octree {
         obj.go.transform.parent = body.transform;
         obj.go.transform.localPosition = pos;
 
-        if(mesh == null) {
+        if (mesh == null) {
             obj.ov.shouldDraw = false;
             return;
         }
@@ -155,21 +167,21 @@ public class Octree {
 
     // 0 -> 0.5 fade children in
     // 0.5 -> 1.0 fade parent out
-    private void GeoMorphInternal() { 
-        if(morphProg < 1.0f) {
+    private void GeoMorphInternal() {
+        if (morphProg < 1.0f) {
             morphProg += Time.deltaTime * fadeRate;
             if (morphProg >= 1.0f) {
                 obj.mr.enabled = false;
-            } else if(morphProg >= 0.5f) {
+            } else if (morphProg >= 0.5f) {
                 obj.SetTransparency((1.0f - morphProg) * 2.0f);
                 // todo set cast shadow strength here as well!
             }
         }
     }
     private void GeoMorphLeaf() {
-        if(morphProg < 0.5f) {
+        if (morphProg < 0.5f) {
             morphProg += Time.deltaTime * fadeRate;
-            if(morphProg >= 0.5f) {
+            if (morphProg >= 0.5f) {
                 obj.SetTransparency(1.0f);
                 morphProg = 1.01f;
             } else {
@@ -197,7 +209,7 @@ public class Octree {
                 Octree child = new Octree(body, center + coff * SIZE * voxelSize * .25f, depth + 1, i);
                 //coff = ((coff + Vector3.one) / 2f) * (SIZE / 2f);
                 //o.passVoxels(voxels, (int)coff.x, (int)coff.y, (int)coff.z);
-                data.Add(child.Generate());
+                data.Add(child.GenerateMesh());
                 children[i] = child;
             }
             return data;
@@ -219,6 +231,7 @@ public class Octree {
         }
         obj.SetTransparency(1.0f);
         morphProg = 0.0f;
+        obj.mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
         //SetChildNeighbors();
         UpdateNeighbors(true);
@@ -301,6 +314,7 @@ public class Octree {
         }
         hasChildren = false;
         obj.mr.enabled = true;
+        obj.mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
         morphProg = 1.0f;
         obj.SetTransparency(morphProg);
         if (obj.mf.mesh.vertexCount > 0) {

@@ -15,7 +15,7 @@ public class CelestialBody : MonoBehaviour {
     // Use this for initialization
     void Start() {
         root = new Octree(this, Vector3.zero, 0, 0);
-        root.BuildGameObject(root.Generate());
+        root.BuildGameObject(root.GenerateMesh());
 
         squareSplitLevels = new float[Octree.MAX_DEPTH + 1];
         for (int i = 0; i < squareSplitLevels.Length; i++) {
@@ -83,7 +83,12 @@ public class CelestialBody : MonoBehaviour {
     void Start() {
         ChunkObject go = SplitManager.GetObject();
 
-        MeshData data = IMarchingCubes.CalculateMeshData();
+        //MeshData data = IMarchingCubes.CalculateMeshData();
+        Array3<sbyte> voxels = WorldGenerator.CreateVoxels(17, 0, 1.0f, Vector3.zero);
+
+        MeshData data = MarchingCubes.CalculateMeshData(voxels, 1.0f);
+
+
         Mesh mesh = data.CreateMesh();
 
         go.mf.sharedMesh = mesh;

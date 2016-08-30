@@ -8,24 +8,62 @@ public static class WorldGenerator {
     // voxelSize is how big each voxel should be
     // radius is radius of planet
     // position is starting position of quadtree
-    public static float[][][] CreateVoxels(
-        int size, int depth, float voxelSize, Vector3 pos) {
+    public static Array3<sbyte> CreateVoxels(
+        int size, int depth, float voxelSize, Vector3 pos, out bool needsMesh) {
 
-        float[][][] voxels = VoxelUtils.Init3DArray<float>(size);
-        
-        int s = (depth == 0) ? 0 : 1;
-        s = 0;  // temp until figure out data inheritance
-        for (int x = s; x < size; x += s + 1) {
-            for (int y = s; y < size; y += s + 1) {
-                for (int z = s; z < size; z += s + 1) {
+        //float[][][] voxels = VoxelUtils.Init3DArray<float>(size);
+        Array3<sbyte> voxels = new Array3<sbyte>(size, Vector3i.Zero);
+
+        //int s = (depth == 0) ? 0 : 1;
+        //s = 0;  // temp until figure out data inheritance
+        //for (int x = s; x < size; x += s + 1) {
+        //    for (int y = s; y < size; y += s + 1) {
+        //        for (int z = s; z < size; z += s + 1) {
+        //            Vector3 worldPos = new Vector3(x, y, z) * voxelSize + pos;
+
+        //            voxels[x, y, z] = Density.Eval(worldPos);
+        //            //voxels[x,y,z] = (sbyte)Mathf.Clamp(Density.Eval(worldPos), -128.0f, 127.0f);
+
+        //        }
+        //    }
+        //}
+
+        // figure this out more..
+        // add command to regenerate with different levels here so you can see changes in realtime
+        // to better understand why it isnt working with r as voxelSize / 2.0f
+        float r = 4.0f * voxelSize;
+        float scale = 32.0f / voxelSize;
+        int x, y, z;
+        for (x = 0; x < size; ++x) {
+            for (y = 0; y < size; ++y) {
+                for (z = 0; z < size; ++z) {
                     Vector3 worldPos = new Vector3(x, y, z) * voxelSize + pos;
-
-                    voxels[x][y][z] = Density.Eval(worldPos);
-
+                    float density = Density.Eval(worldPos);
+                    //voxels[x, y, z] = (sbyte)(Mathf.Clamp(density, -8.0f, 7.93f)*16.0f);
+                    //voxels[x, y, z] = (sbyte)Mathf.Clamp(density, -128.0f, 127.0f);
+                    voxels[x,y,z] = (sbyte)(Mathf.Clamp(density, -r, r) * scale);
                 }
             }
         }
 
+        // figure out if chunk will have a mesh
+        bool set = false;
+        bool positive = false;
+        for (x = 0; x < size; ++x) {
+            for (y = 0; y < size; ++y) {
+                for (z = 0; z < size; ++z) {
+                    if (!set) {
+                        positive = voxels[x, y, z] >= MarchingCubes.isoLevel;
+                        set = true;
+                    }else if((positive && voxels[x,y,z] < MarchingCubes.isoLevel)||
+                            (!positive && voxels[x,y,z] >= MarchingCubes.isoLevel)) {
+                        needsMesh = true;
+                        return voxels;
+                    }
+                }
+            }
+        }
+        needsMesh = false;
         return voxels;
     }
 
