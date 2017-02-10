@@ -2,7 +2,7 @@
 using System.Collections;
 
 // 3D cube array class which is actually just a 1D array using index calculations
-public class Array3<T> where T:struct {
+public class Array3<T> where T : struct {
 
     public Vector3i pos;
     public int size;
@@ -15,29 +15,23 @@ public class Array3<T> where T:struct {
         data = new T[size * size * size];
     }
 
-    public T this[int x, int y, int z]
-    {
-        get
-        {
+    public T this[int x, int y, int z] {
+        get {
             return data[x + y * size + z * size * size];
         }
-        set
-        {
+        set {
             data[x + y * size + z * size * size] = value;
         }
     }
 
-    public T this[Vector3i v]
-    {
-        get
-        {
+    public T this[Vector3i v] {
+        get {
             return this[v.x, v.y, v.z];
         }
-        set
-        {
+        set {
             this[v.x, v.y, v.z] = value;
         }
     }
-    
+
 }
 

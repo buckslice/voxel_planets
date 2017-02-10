@@ -27,6 +27,7 @@ public static class MarchingCubes {
                             z + vertexOffset[i, 2]];
                     }
                     MarchCube(new Vector4(x, y, z, voxelSize), density, verts, edgeVertices);
+
                     //PolygonizeCell(new Vector3i(x, y, z), density, verts);
                     //TransvoxelExtractor.PolygonizeRegularCell(new Vector3i(x, y, z), voxels, verts, tris);
 

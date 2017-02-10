@@ -16,7 +16,7 @@ public class PlanetWalker : MonoBehaviour {
 
     private Transform camTransform;
 
-    private bool turnsTowardGravity = true;
+    public bool turnsTowardGravity = true;
     public Vector3 gravitySource = new Vector3();
     public float largestGravSource = 0f;
 
@@ -109,9 +109,11 @@ public class PlanetWalker : MonoBehaviour {
         myTransform.Rotate(0, curHoriz, 0);
 
         if (freeFlightMode) {
-            Vector3 gravityDir = -(myTransform.position - gravitySource).normalized;
-            Vector3 gravityForward = Vector3.Cross(gravityDir, myTransform.right);
-            myTransform.rotation = Quaternion.LookRotation(gravityForward, -gravityDir);
+            if (turnsTowardGravity) {
+                Vector3 gravityDir = -(myTransform.position - gravitySource).normalized;
+                Vector3 gravityForward = Vector3.Cross(gravityDir, myTransform.right);
+                myTransform.rotation = Quaternion.LookRotation(gravityForward, -gravityDir);
+            }
 
             float increment = Mathf.Min(targetFlightSpeed / 5f, 200f) * -Input.GetAxis("Mouse ScrollWheel");
             targetFlightSpeed += increment;

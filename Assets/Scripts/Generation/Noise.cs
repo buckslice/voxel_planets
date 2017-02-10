@@ -380,6 +380,8 @@ public static class Noise {
 
         for(int i = 0; i < octaves; ++i) {
             total += Simplex3((v.x+offset.x) * frequency, (v.y+offset.y) * frequency, (v.z+offset.z) * frequency) * amplitude;
+            //WorleySample ws = Worley3((v.x + offset.x) * frequency, (v.y + offset.y) * frequency, (v.z + offset.z) * frequency, 1, DistanceFunction.EUCLIDIAN);
+            //total += ws.F[0] * amplitude;
 
             amplitude *= persistence;
             frequency *= lacunarity;

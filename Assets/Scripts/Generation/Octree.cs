@@ -127,6 +127,7 @@ public class Octree {
         obj.mf.mesh = mesh;
 
         if (depth == 0) {
+            Debug.Log("Called");
             obj.ov.init(depth, branch, center, area, Color.blue);
         } else {
             obj.ov.init(depth, branch, center, area, Color.red);

@@ -54,6 +54,13 @@ public class Density  {
         d += Noise.Fractal3(worldPos, new Vector3(-100, 10, 25), 9, 0.009f, 0.45f, 2.07f) * 25.0f;
         //--------------------------------------------------------------------------------
 
+        // WORLEY NOISE TEST--------------------------------------------------------------
+        // change fractal3 code to use worley instead
+        // this is currently broke and may show vurnerability in mesh generation
+        // because parents arent getting meshes sometimes with this
+        //d += Noise.Fractal3(worldPos, new Vector3(-100, 10, 25), 2, 0.001f, 0.45f, 2.07f) * 25.0f;
+        //--------------------------------------------------------------------------------
+
         //float warp = Noise.Simplex3(worldPos.x * 0.04f, worldPos.y * 0.04f, worldPos.z * 0.04f);
         //worldPos += Vector3.one * warp * 20;
 
@@ -83,7 +90,7 @@ public class Density  {
         ////double d = w.F[1] - w.F[0];
 
         // BASIC FLAT FRACTAL ------------------------------------------------------------
-        //d = -worldPos.y + 200.0f;
+        //d = -worldPos.y + 20.0f;
         //d += Noise.Fractal3(worldPos, new Vector3(0, 25, 25), 9, 0.01f, 0.5f, 2.0f) * 20.0f;
         //--------------------------------------------------------------------------------
 

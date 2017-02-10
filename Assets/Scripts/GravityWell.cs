@@ -6,6 +6,8 @@ public class GravityWell : MonoBehaviour {
 
     public float gravity = 9.81f; // should eventually base this off planet mass
     public LayerMask obeysGravity;
+    public bool drawGizmo = true;
+
     private float gravityRadius;    // should be based off mass
     private float atmosphereRadius;
 
@@ -99,9 +101,10 @@ public class GravityWell : MonoBehaviour {
 
     // draws sphere of influence
     void OnDrawGizmos() {
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, gravityRadius);
-
+        if (drawGizmo) {
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(transform.position, gravityRadius);
+        }
     }
 }
 

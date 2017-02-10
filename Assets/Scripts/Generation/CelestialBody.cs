@@ -84,7 +84,8 @@ public class CelestialBody : MonoBehaviour {
         ChunkObject go = SplitManager.GetObject();
 
         //MeshData data = IMarchingCubes.CalculateMeshData();
-        Array3<sbyte> voxels = WorldGenerator.CreateVoxels(17, 0, 1.0f, Vector3.zero);
+        bool needsMesh;
+        Array3<sbyte> voxels = WorldGenerator.CreateVoxels(33, 0, 1.0f, Vector3.zero, out needsMesh);
 
         MeshData data = MarchingCubes.CalculateMeshData(voxels, 1.0f);
 
@@ -93,6 +94,8 @@ public class CelestialBody : MonoBehaviour {
 
         go.mf.sharedMesh = mesh;
         go.mr.material = mat;
+        //go.ov.bounds = new Bounds()
+        //go.ov.shouldDraw = true;
 
         
     }
