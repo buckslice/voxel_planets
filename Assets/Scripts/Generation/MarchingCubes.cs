@@ -46,7 +46,8 @@ public static class MarchingCubes {
         float offset = 0.0f;
 
         //Find which vertices are inside of the surface and which are outside
-        for (i = 0; i < 8; i++) if (density[i] < isoLevel) flagIndex |= 1 << i;
+        // positive density is inside, negative is outside
+        for (i = 0; i < 8; i++) if (density[i] >= isoLevel) flagIndex |= 1 << i;
 
         //Find which edges are intersected by the surface
         int edgeFlags = cubeEdgeFlags[flagIndex];
@@ -85,7 +86,7 @@ public static class MarchingCubes {
     //Target is the value that represents the surface of mesh
     //For example a range of -1 to 1, 0 would be the mid point were we want the surface to cut through
     //The target value does not have to be the mid point it can be any value with in the range
-    public static float isoLevel = 0.0f;
+    public static sbyte isoLevel = 0;
 
     //Winding order of triangles use 2,1,0 or 0,1,2
     //static int[] windingOrder = new int[] { 0, 1, 2 };

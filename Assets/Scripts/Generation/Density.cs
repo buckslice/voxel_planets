@@ -43,22 +43,27 @@ public class Density  {
         return Mathf.Max(a, b);
     }
 
-
     public static float Eval(Vector3 worldPos) {
         float d = 0.0f;
 
         // FRACTAL PLANET ----------------------------------------------------------------
         float rad = 800.0f;
-        worldPos.y -= rad;
-        d += rad - (worldPos - new Vector3(0, -rad, 0)).magnitude;
-        d += Noise.Fractal3(worldPos, new Vector3(-100, 10, 25), 9, 0.009f, 0.45f, 2.07f) * 25.0f;
+        Vector3 wp = worldPos;
+        wp.y -= rad;
+        float planet = (wp - new Vector3(0, -rad, 0)).magnitude - rad;
+        planet += Noise.Fractal3(wp, new Vector3(-100, 10, 25), 5, 0.009f, 0.45f, 2.07f) * 25.0f;
+
+        float sphere = Sphere(worldPos, Vector3.zero, 785.0f);
+        sphere += Noise.Fractal3(worldPos, Vector3.zero, 3, 0.05f);
+
+        d = Union(planet, sphere);
         //--------------------------------------------------------------------------------
 
         // WORLEY NOISE TEST--------------------------------------------------------------
         // change fractal3 code to use worley instead
         // this is currently broke and may show vurnerability in mesh generation
         // because parents arent getting meshes sometimes with this
-        //d += Noise.Fractal3(worldPos, new Vector3(-100, 10, 25), 2, 0.001f, 0.45f, 2.07f) * 25.0f;
+        //d += Noise.Fractal3(worldPos, new Vector3(-100, 10, 25), 3, 0.001f, 0.45f, 2.07f) * 25.0f;
         //--------------------------------------------------------------------------------
 
         //float warp = Noise.Simplex3(worldPos.x * 0.04f, worldPos.y * 0.04f, worldPos.z * 0.04f);
@@ -93,6 +98,9 @@ public class Density  {
         //d = -worldPos.y + 20.0f;
         //d += Noise.Fractal3(worldPos, new Vector3(0, 25, 25), 9, 0.01f, 0.5f, 2.0f) * 20.0f;
         //--------------------------------------------------------------------------------
+
+        //d = -worldPos.y + 4.0f;
+        //d += Noise.Fractal3(worldPos, new Vector3(0, 0, 25), 9, 0.005f, 0.5f, 2.0f) * 20.0f;
 
         return d;
     }

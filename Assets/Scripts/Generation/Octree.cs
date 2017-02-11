@@ -73,11 +73,10 @@ public class Octree {
         data.normals = VoxelUtils.CalculateSmoothNormals(voxels, voxelSize, data.vertices);
         //data.SplitEdgesCalcSmoothness();
 #else
-        bool needsMesh;
-        voxels = WorldGenerator.CreateVoxels(SIZE + 1, depth, voxelSize, pos, out needsMesh);
-        if (!needsMesh) {
-            return null;
-        }
+        voxels = WorldGenerator.CreateVoxels(SIZE + 1, depth, voxelSize, pos);
+        //if (!needsMesh) {
+        //    return null;
+        //}
 
         MeshData data = MarchingCubes.CalculateMeshData(voxels, voxelSize);
         data.CalculateNormals();
@@ -91,7 +90,6 @@ public class Octree {
     // most other work is offloaded to helper threads. builds mesh and game object
     // dont actually need to build a gameobject if theres no mesh...
     // or at least have an empty object for the parent transform and dont attach components
-    static int meshlessboys = 0;
     public void BuildGameObject(MeshData data) {
         Mesh mesh = null;
 
@@ -127,7 +125,7 @@ public class Octree {
         obj.mf.mesh = mesh;
 
         if (depth == 0) {
-            Debug.Log("Called");
+            //Debug.Log("Called");
             obj.ov.init(depth, branch, center, area, Color.blue);
         } else {
             obj.ov.init(depth, branch, center, area, Color.red);

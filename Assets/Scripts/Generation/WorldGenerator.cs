@@ -2,14 +2,14 @@
 using System.Collections;
 
 public static class WorldGenerator {
-    
+
     // size is length of arrays
     // depth is octree depth
     // voxelSize is how big each voxel should be
     // radius is radius of planet
     // position is starting position of quadtree
     public static Array3<sbyte> CreateVoxels(
-        int size, int depth, float voxelSize, Vector3 pos, out bool needsMesh) {
+        int size, int depth, float voxelSize, Vector3 pos) {
 
         //float[][][] voxels = VoxelUtils.Init3DArray<float>(size);
         Array3<sbyte> voxels = new Array3<sbyte>(size, Vector3i.Zero);
@@ -31,39 +31,40 @@ public static class WorldGenerator {
         // figure this out more..
         // add command to regenerate with different levels here so you can see changes in realtime
         // to better understand why it isnt working with r as voxelSize / 2.0f
-        float r = 4.0f * voxelSize;
-        float scale = 32.0f / voxelSize;
+
+        // sbyte goes from -128 to 127 (so -128, -1 and 0 to 127 should be range)
+
         int x, y, z;
         for (x = 0; x < size; ++x) {
             for (y = 0; y < size; ++y) {
                 for (z = 0; z < size; ++z) {
                     Vector3 worldPos = new Vector3(x, y, z) * voxelSize + pos;
                     float density = Density.Eval(worldPos);
-                    //voxels[x, y, z] = (sbyte)(Mathf.Clamp(density, -8.0f, 7.93f)*16.0f);
-                    //voxels[x, y, z] = (sbyte)Mathf.Clamp(density, -128.0f, 127.0f);
-                    voxels[x,y,z] = (sbyte)(Mathf.Clamp(density, -r, r) * scale);
+
+                    voxels[x, y, z] = (sbyte)(Mathf.Clamp(density * 128.0f / voxelSize, -128.0f, 127.0f));
                 }
             }
         }
 
-        // figure out if chunk will have a mesh
-        bool set = false;
-        bool positive = false;
-        for (x = 0; x < size; ++x) {
-            for (y = 0; y < size; ++y) {
-                for (z = 0; z < size; ++z) {
-                    if (!set) {
-                        positive = voxels[x, y, z] >= MarchingCubes.isoLevel;
-                        set = true;
-                    }else if((positive && voxels[x,y,z] < MarchingCubes.isoLevel)||
-                            (!positive && voxels[x,y,z] >= MarchingCubes.isoLevel)) {
-                        needsMesh = true;
-                        return voxels;
-                    }
-                }
-            }
-        }
-        needsMesh = false;
+        // could incorporate into loops above probably (this is probably microoptimization tho i dunno)
+        //// figure out if chunk will have a mesh
+        //bool set = false;
+        //bool positive = false;
+        //for (x = 0; x < size; ++x) {
+        //    for (y = 0; y < size; ++y) {
+        //        for (z = 0; z < size; ++z) {
+        //            if (!set) {
+        //                positive = voxels[x, y, z] >= MarchingCubes.isoLevel;
+        //                set = true;
+        //            }else if((positive && voxels[x,y,z] < MarchingCubes.isoLevel)||
+        //                    (!positive && voxels[x,y,z] >= MarchingCubes.isoLevel)) {
+        //                needsMesh = true;
+        //                return voxels;
+        //            }
+        //        }
+        //    }
+        //}
+        //needsMesh = false;
         return voxels;
     }
 
