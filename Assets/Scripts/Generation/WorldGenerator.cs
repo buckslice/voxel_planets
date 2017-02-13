@@ -41,7 +41,7 @@ public static class WorldGenerator {
                     Vector3 worldPos = new Vector3(x, y, z) * voxelSize + pos;
                     float density = Density.Eval(worldPos);
 
-                    voxels[x, y, z] = (sbyte)(Mathf.Clamp(density * 128.0f / voxelSize, -128.0f, 127.0f));
+                    voxels[x, y, z] = (sbyte)(Mathf.Clamp(Mathf.Round(density * 128.0f / voxelSize), -128.0f, 127.0f));
                 }
             }
         }

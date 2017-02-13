@@ -57,6 +57,7 @@ public class Density  {
         sphere += Noise.Fractal3(worldPos, Vector3.zero, 3, 0.05f);
 
         d = Union(planet, sphere);
+        //d = sphere;
         //--------------------------------------------------------------------------------
 
         // WORLEY NOISE TEST--------------------------------------------------------------

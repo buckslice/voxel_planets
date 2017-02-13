@@ -49,20 +49,20 @@ public static class VoxelUtils {
     }
 
     // takes in voxel array and MeshData vertices and returns array of mesh normals
-    public static Vector3[] CalculateSmoothNormals(float[][][] voxels, float voxelSize, Vector3[] verts) {
+    public static Vector3[] CalculateSmoothNormals(Array3<sbyte> voxels, float voxelSize, Vector3[] verts) {
         // calculates the normal of each voxel. If you have a 3d array of data
         // the normal is the derivitive of the x, y and z axis.
         // normally you need to flip the normal (*-1) but it is not needed in this case.
-        int size = voxels.Length;
+        int size = voxels.size;
         Vector3[][][] normals = Init3DArray<Vector3>(size); // TODO reuse this
         for (int x = 2; x < size - 2; x++) {
             for (int y = 2; y < size - 2; y++) {
                 for (int z = 2; z < size - 2; z++) {
-                    float dx = voxels[x + 1][y][z] - voxels[x - 1][y][z];
-                    float dy = voxels[x][y + 1][z] - voxels[x][y - 1][z];
-                    float dz = voxels[x][y][z + 1] - voxels[x][y][z - 1];
+                    float dx = voxels[x + 1,y,z] - voxels[x - 1,y,z];
+                    float dy = voxels[x,y + 1,z] - voxels[x,y - 1,z];
+                    float dz = voxels[x,y,z + 1] - voxels[x,y,z - 1];
 
-                    normals[x][y][z] = -Vector3.Normalize(new Vector3(dx, dy, dz));
+                    normals[x][y][z] = Vector3.Normalize(new Vector3(dx, dy, dz)/128.0f*voxelSize);
                 }
             }
         }
@@ -255,6 +255,12 @@ public class MeshData {
         }
 
         Mesh mesh = new Mesh();
+
+        // if you want meshes to be centered on planet
+        //for(int i = 0; i < vertices.Length; ++i) {
+        //    vertices[i] += pos;
+        //}
+
         mesh.vertices = vertices;
         mesh.triangles = triangles;
 
