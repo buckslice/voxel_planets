@@ -6,8 +6,9 @@ public class CelestialBody : MonoBehaviour {
     public Material mat;
     public float[] squareSplitLevels;
     public Transform cam;
-    public float surfaceRadius = 500.0f;
+    public float surfaceRadius = 500.0f;    // need to actually set these based off generation
     public float atmosphereRadius = 1000.0f;
+    public float gravityRadius = 1500.0f;
 
     private Octree root = null;
 
@@ -19,7 +20,7 @@ public class CelestialBody : MonoBehaviour {
 
         squareSplitLevels = new float[Octree.MAX_DEPTH + 1];
         for (int i = 0; i < squareSplitLevels.Length; i++) {
-            float level = Mathf.Pow(2f, Octree.MAX_DEPTH - i) * 100f;
+            float level = Mathf.Pow(2f, Octree.MAX_DEPTH - i) * 100f; //64.0f;
             squareSplitLevels[i] = level * level;
         }
         cam = Camera.main.transform;

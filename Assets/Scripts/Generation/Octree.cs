@@ -36,6 +36,7 @@ public class Octree {
     public bool splitting = false; // set when a tree is waiting on list/currently being split
     private bool dying = false;    // gets set when a child is merged into parent
 
+    public const float colliderGenDistance = 50.0f;
     public const float fadeRate = 1.0f; // 0.5f would be half of normal time, so 2 seconds
     private float morphProg = 0.0f;   // "percent morphed" 0 at morph start, 1 when morph is finished
 
@@ -149,7 +150,7 @@ public class Octree {
         } else {
             GeoMorphLeaf();
             // if at max depth, have valid mesh, and close to cam then should have a collider
-            if (depth == MAX_DEPTH && obj.mf.sharedMesh && GetSqrDistToCam() < 100.0f * 100.0f) {
+            if (depth == MAX_DEPTH && obj.mf.sharedMesh && GetSqrDistToCamFromCenter() < colliderGenDistance * colliderGenDistance) {
                 if (col == null) {     // if collider is null then spawn one
                     col = SplitManager.GetCollider();
                     col.go.transform.SetParent(obj.go.transform, false);
@@ -277,7 +278,11 @@ public class Octree {
 
     }
 
-    public float GetSqrDistToCam() {
+    public float GetSqrDistToCamFromArea() {
+        return area.SqrDistance(body.cam.position);
+    }
+
+    public float GetSqrDistToCamFromCenter() {
         return (body.cam.position - center).sqrMagnitude;
     }
 
@@ -286,11 +291,11 @@ public class Octree {
     //    not dying
     //    fully opaque
     public bool ShouldSplit() {
-        return depth < MAX_DEPTH && !dying && morphProg >= 1.0f && GetSqrDistToCam() < body.squareSplitLevels[depth];
+        return depth < MAX_DEPTH && !dying && morphProg >= 1.0f && GetSqrDistToCamFromCenter() < body.squareSplitLevels[depth];
     }
 
     private bool ShouldMerge() {
-        return CanMerge() && GetSqrDistToCam() > body.squareSplitLevels[depth];
+        return CanMerge() && GetSqrDistToCamFromCenter() > body.squareSplitLevels[depth];
     }
 
     private bool CanMerge() {
@@ -356,9 +361,5 @@ public class Octree {
         new Vector3(-1, -1, -1),
         new Vector3(1, -1, -1)
     };
-
-    public Bounds GetBounds() {
-        return new Bounds(center, Vector3.one * voxelSize * SIZE);
-    }
 
 }

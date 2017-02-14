@@ -1,30 +1,26 @@
 ﻿using UnityEngine;
-using System.Collections;
+using System.Collections.Generic;
 
 [RequireComponent(typeof(CelestialBody))]
 public class GravityWell : MonoBehaviour {
-
     public float gravity = 9.81f; // should eventually base this off planet mass
     public LayerMask obeysGravity;
     public bool drawGizmo = true;
+    public Mesh sphereMesh;
 
-    private float gravityRadius;    // should be based off mass
-    private float atmosphereRadius;
-
-    private Collider[] colliders = new Collider[0];
-    private Collider[] lastColliders;
+    private const int maxColliders = 64;
+    private int colliderCount = 0;
+    private Collider[] colliders = new Collider[maxColliders];
+    private List<Collider> lastColliders = new List<Collider>();
     private Transform lastPos;	// needs to be transform so it is updated by floating origin
     private CelestialBody cb;
 
-    private Transform myTransform;
+    private Transform tform;
 
     // Use this for initialization
     void Start() {
-        myTransform = transform;
+        tform = transform;
         cb = GetComponent<CelestialBody>();
-
-        gravityRadius = cb.surfaceRadius * 3;
-        atmosphereRadius = cb.atmosphereRadius;
 
         GameObject go = new GameObject(gameObject.name + " Last Position");
         lastPos = go.transform;
@@ -38,25 +34,23 @@ public class GravityWell : MonoBehaviour {
     }
 
     void FixedUpdate() {
-        // copy last frames colliders so you can check if any left later
-        lastColliders = new Collider[colliders.Length];
-        System.Array.Copy(colliders, lastColliders, colliders.Length);
+        Vector3 planetVelocity = (tform.position - lastPos.position) / Time.deltaTime;
 
-        Vector3 planetVelocity = (myTransform.position - lastPos.position) / Time.deltaTime;
+        // add gravity to all rigidbodies in gravity radius (have to be in ObeysGravity layer)
+        colliderCount = Physics.OverlapSphereNonAlloc(tform.position, cb.gravityRadius, colliders, obeysGravity.value);
+        for (int i = 0; i < colliderCount; ++i) {
+            Collider c = colliders[i];
+            Rigidbody rb = c.GetComponent<Rigidbody>();
 
-        // add gravity to all rigidbodies in gravity radius (have to be tagged!)
-        colliders = Physics.OverlapSphere(myTransform.position, gravityRadius, obeysGravity.value);
-        foreach (Collider collider in colliders) {
-            if (collider.GetComponent<Rigidbody>() && !collider.GetComponent<Rigidbody>().isKinematic) {
-                Vector3 g = (myTransform.position - collider.transform.position).normalized * gravity;
-                collider.GetComponent<Rigidbody>().AddForce(g * collider.GetComponent<Rigidbody>().mass);
+            if (rb && !rb.isKinematic) {
+                Vector3 g = (tform.position - c.transform.position).normalized * gravity;
+                rb.AddForce(g * rb.mass);
 
-                // this is stupid and should be rewritten eventually
-                PlanetWalker player = collider.gameObject.GetComponent<PlanetWalker>();
-                if (player != null) {
-                    if (player.largestGravSource <= gravity) {
-                        player.largestGravSource = gravity;
-                        player.gravitySource = myTransform.position;
+                if (c.CompareTag("Player")) {
+                    TPRBPlanetWalker player = c.gameObject.GetComponent<TPRBPlanetWalker>();
+                    if (player && player.gravityStrength <= gravity) {
+                        player.gravityStrength = gravity;
+                        player.gravitySource = tform.position;
                     }
                 }
             }
@@ -64,12 +58,13 @@ public class GravityWell : MonoBehaviour {
 
         // parent all rigidbodies in atmosphere radius
         // and subtract planets velocity from them
-        colliders = Physics.OverlapSphere(myTransform.position, atmosphereRadius, obeysGravity.value);
-        foreach (Collider collider in colliders) {
-            if (collider.GetComponent<Rigidbody>() && !collider.GetComponent<Rigidbody>().isKinematic) {
-                if (collider.transform.parent == null) {
-                    collider.transform.parent = myTransform;
-                    collider.GetComponent<Rigidbody>().velocity -= planetVelocity;
+        colliderCount = Physics.OverlapSphereNonAlloc(tform.position, cb.atmosphereRadius, colliders, obeysGravity.value);
+        for (int i = 0; i < colliderCount; ++i) {
+            Rigidbody rb = colliders[i].GetComponent<Rigidbody>();
+            if (rb && !rb.isKinematic) {
+                if (rb.transform.parent == null) {
+                    rb.transform.parent = tform;
+                    rb.velocity -= planetVelocity;
                     //Debug.Log("entered atmosphere: " + Time.time);
                 }
             }
@@ -77,17 +72,23 @@ public class GravityWell : MonoBehaviour {
 
         // check for all rigidbodies that left the atmosphere
         // and add planets velocity to them
-        foreach (Collider collider in lastColliders) {
-            if (collider.GetComponent<Rigidbody>() && !collider.GetComponent<Rigidbody>().isKinematic) {
-                if (!contains(collider, colliders)) {
-                    collider.transform.parent = null;
-                    collider.GetComponent<Rigidbody>().velocity += planetVelocity;
-                    //Debug.Log("left atmosphere: " + Time.time);
-                }
+        for (int i = 0; i < lastColliders.Count; ++i) {
+            Collider c = lastColliders[i];
+            Rigidbody rb = c.GetComponent<Rigidbody>();
+            if (rb && !rb.isKinematic && !contains(c, colliders)) { // should do something better once a lot of objects
+                c.transform.parent = null;
+                rb.velocity += planetVelocity;
+                //Debug.Log("left atmosphere: " + Time.time);
             }
         }
 
-        lastPos.position = myTransform.position;
+        // save last frames colliders so you can check if any left later
+        lastColliders.Clear();
+        for (int i = 0; i < colliderCount; ++i) {
+            lastColliders.Add(colliders[i]);
+        }
+        // save last position to calculate velocity deltas (i think... havnt done this code in while)
+        lastPos.position = tform.position;
     }
 
     private bool contains(Collider collider, Collider[] colliders) {
@@ -103,7 +104,8 @@ public class GravityWell : MonoBehaviour {
     void OnDrawGizmos() {
         if (drawGizmo) {
             Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(transform.position, gravityRadius);
+            //Gizmos.DrawWireSphere(transform.position, cb.gravityRadius);
+            Gizmos.DrawWireMesh(sphereMesh, transform.position, Quaternion.identity, Vector3.one * cb.gravityRadius * 2.0f);
         }
     }
 }

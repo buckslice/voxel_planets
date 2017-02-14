@@ -168,7 +168,7 @@ public class PlanetWalker : MonoBehaviour {
         if (myTransform.parent != null) {
             // transform.position still returns world position
             // when a object is childed the editor shows its localPosition instead
-            // just learned this lol
+            // just learned this lol (omg i was such a pleb)
             Vector3 gravityDir = -(myTransform.position - myTransform.parent.position).normalized;
 
             Vector3 raycastStart = myTransform.position;

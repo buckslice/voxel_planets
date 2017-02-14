@@ -2,16 +2,22 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using UnityEngine.UI;
 
 public class SplitManager : MonoBehaviour {
+    [Range(1,8)]
+    public int maxConcurrentTasks = 2;
+
     // shared list between main and worker thread of octrees to split
     public static List<Octree> splitList = new List<Octree>();
-    public static List<Task<SplitData>> resolves = new List<Task<SplitData>>();
+    public static List<Task<SplitData>> taskList = new List<Task<SplitData>>();
 
     public static Stack<ChunkObject> freeObjects = new Stack<ChunkObject>();
     public static Stack<ColliderObject> freeColliders = new Stack<ColliderObject>();
 
     private static Transform tform;
+
+    public Text splitCountText;
 
     // Use this for initialization
     void Awake() {
@@ -22,15 +28,16 @@ public class SplitManager : MonoBehaviour {
     
     // Update is called once per frame
     void Update() {
-        int newTasksPerFrame = 1;
-        while(splitList.Count > 0 && newTasksPerFrame > 0 && resolves.Count < 8) {
+        int taskLaunchesPerFrame = 1;
+        // check if there are splits to do, havent launched too many tasks this frame, and theres less than 8 tasks going
+        while(splitList.Count > 0 && taskLaunchesPerFrame > 0 && taskList.Count < 2) {
             // find octree closest to cam and split that
             int count = splitList.Count;
             int endIndex = count - 1;
             float closestDist = float.MaxValue;
             int closestIndex = endIndex;
             for(int i = 0; i < count; ++i) {
-                float dist = splitList[i].GetSqrDistToCam();
+                float dist = splitList[i].GetSqrDistToCamFromCenter();
                 if (dist < closestDist) {
                     closestIndex = i;
                     closestDist = dist;
@@ -47,8 +54,8 @@ public class SplitManager : MonoBehaviour {
 
             // one last check before queueing up task
             if (toSplit.ShouldSplit()) {
-                resolves.Add(toSplit.SplitAsync());
-                --newTasksPerFrame;
+                taskList.Add(toSplit.SplitAsync());
+                --taskLaunchesPerFrame;
             } else {    // otherwise just remove from list
                 toSplit.splitting = false;
             }
@@ -57,12 +64,12 @@ public class SplitManager : MonoBehaviour {
 
         // check and resolve tasks that are complete
         int resolutionsPerFrame = 1;
-        for(int i = 0; i < resolves.Count;) {
-            if (resolves[i].IsCompleted) {
+        for(int i = 0; i < taskList.Count;) {
+            if (taskList[i].IsCompleted) {
                 //Debug.Log("resolved: " + ++totalResolved);
-                SplitData sd = resolves[i].Result;
+                SplitData sd = taskList[i].Result;
                 sd.tree.SplitResolve(sd.data);
-                resolves.RemoveAt(i);
+                taskList.RemoveAt(i);
                 if (--resolutionsPerFrame <= 0) {
                     break;
                 }
@@ -70,6 +77,9 @@ public class SplitManager : MonoBehaviour {
                 ++i;
             }
         }
+
+        splitCountText.text = "splits: " + splitList.Count;
+
     }
 
     public static void AddToSplitList(Octree node) {
@@ -78,11 +88,11 @@ public class SplitManager : MonoBehaviour {
 
     // todo reimplement these to generate closest first
     public int NearestToFarthest(Octree o1, Octree o2) {
-        return o1.GetSqrDistToCam().CompareTo(o2.GetSqrDistToCam());
+        return o1.GetSqrDistToCamFromCenter().CompareTo(o2.GetSqrDistToCamFromCenter());
     }
 
     public int FurthestToNearest(Octree o1, Octree o2) {
-        return o2.GetSqrDistToCam().CompareTo(o1.GetSqrDistToCam());
+        return o2.GetSqrDistToCamFromCenter().CompareTo(o1.GetSqrDistToCamFromCenter());
     }
 
     // returns a gameobject with proper components
