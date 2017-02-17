@@ -6,6 +6,7 @@ public class CelestialBody : MonoBehaviour {
     public Material mat;
     public float[] squareSplitLevels;
     public Transform cam;
+    public Transform player;
     public float surfaceRadius = 500.0f;    // need to actually set these based off generation
     public float atmosphereRadius = 1000.0f;
     public float gravityRadius = 1500.0f;
@@ -24,6 +25,7 @@ public class CelestialBody : MonoBehaviour {
             squareSplitLevels[i] = level * level;
         }
         cam = Camera.main.transform;
+        player = GameObject.Find("Player").transform;
     }
 
     // Update is called once per frame

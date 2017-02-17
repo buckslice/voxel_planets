@@ -30,7 +30,7 @@ public class SimpleVoxelChunk : MonoBehaviour {
         Vector3 center = Vector3.one * (size - 1) / 2.0f;
         Bounds area = new Bounds(center, Vector3.one * voxelSize * (size - 1));
 
-        obj.ov.init(0, 0, center, area, Color.red);
+        obj.ov.init(0, 0, area, Color.red);
 
     }
 

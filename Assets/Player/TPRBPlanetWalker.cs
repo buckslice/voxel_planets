@@ -56,11 +56,13 @@ public class TPRBPlanetWalker : MonoBehaviour {
 
     private float timeSinceGrounded = 1.0f;
     private float timeSinceHitJump = 1.0f;
+    float jumpCooldown = 0.0f;
     private const float comeToRestTime = 0.5f;
     private float timeTillRest = comeToRestTime;
     private float targCamDistance;
     private bool firstPerson = false;
 
+    [SerializeField]
     private Animator myAnim;
     private Rigidbody myrb;
     private Transform cam;
@@ -82,8 +84,6 @@ public class TPRBPlanetWalker : MonoBehaviour {
 
         model = tform.Find("Model");
         cam.parent = camPivot.transform;
-
-        //myAnim = model.GetComponent<Animator>();
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
@@ -117,6 +117,8 @@ public class TPRBPlanetWalker : MonoBehaviour {
         firstPerson = Mathf.Approximately(targCamDistance, minDist);
         camDistance = Mathf.Lerp(camDistance, firstPerson ? 0.0f : targCamDistance, Time.deltaTime * 5.0f);
         cam.localPosition = new Vector3(0, 0, -camDistance);
+
+        model.gameObject.SetActive(!firstPerson);
 
         // collide camera with anything in camera collision layer
         if (!firstPerson) {
@@ -188,12 +190,16 @@ public class TPRBPlanetWalker : MonoBehaviour {
         model.rotation = Quaternion.Lerp(model.rotation, tform.rotation, turnRate);
 
         // set animation speeds
-        //float animSpeed = myrb.velocity.magnitude;
+        float animSpeed = myrb.velocity.magnitude;
         // if animSpeed gets too close to one controller starts freakin
-        //animSpeed = Mathf.Clamp(animSpeed, 0.1f, 10f);
-        //myAnim.SetFloat("Speed", animSpeed);
-        //myAnim.SetBool("Airborne", !grounded);
-        //myAnim.SetBool("Jumping", myRigidbody.velocity.y > 8f);
+        animSpeed = Mathf.Clamp(animSpeed, 0.1f, 10f);
+        if (!anyInput) {
+            animSpeed = 0.1f;
+        }
+        myAnim.SetFloat("Speed", animSpeed);
+        myAnim.SetFloat("AirTime", timeSinceGrounded);
+        Vector3 v = tform.InverseTransformDirection(myrb.velocity);
+        myAnim.SetBool("Jumping", v.y > 8f);
 
     }
 
@@ -262,14 +268,14 @@ public class TPRBPlanetWalker : MonoBehaviour {
         // get rigidbody velocity local to player transform
         Vector3 v = tform.InverseTransformDirection(myrb.velocity);
 
+        jumpCooldown -= Time.deltaTime;
         // jump if pressed button and recently grounded
-        if (timeSinceHitJump < 0.2f && timeSinceGrounded < 0.2f) {
+        if (timeSinceHitJump < 0.2f && timeSinceGrounded < 0.2f && jumpCooldown <= 0.0f) {
             jumping = true;
             myrb.isKinematic = false;
             timeTillRest = comeToRestTime;
+            jumpCooldown = 1.0f;
             v.y = jumpSpeed;    // set current y velocity to jump
-            timeSinceHitJump = 1.0f;
-            timeSinceGrounded = 1.0f;
         }
 
         // if not trying to move then apply friction

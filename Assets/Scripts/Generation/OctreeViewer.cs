@@ -19,11 +19,10 @@ public class OctreeViewer : MonoBehaviour {
         }
     }
 
-    public void init(int depth, int branch, Vector3 center, Bounds bounds, Color c) {
+    public void init(int depth, int branch, Bounds bounds, Color c) {
         shouldDraw = true;
         this.depth = depth;
         this.branch = branch;
-        this.center = center;
         this.bounds = bounds;
         this.c = c;
 

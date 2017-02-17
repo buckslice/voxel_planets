@@ -19,7 +19,6 @@ public class Octree {
     private Array3<sbyte> voxels; // need to save for vertex modification
 
     private Vector3 pos;    // position of voxel grid (denotes the corner so it gets offset to remain centered)
-    public readonly Vector3 center; // world space center of octree area
 
     public CelestialBody body;
 
@@ -30,8 +29,9 @@ public class Octree {
     public const int MAX_DEPTH = 6;     // max depth meshes can split to
     public readonly float voxelSize;   // size of each voxel for this tree (in meters)
 
-    public Bounds area; // bounding box for area this tree represents (gonna be bad.. once planets can rotate lol)
-    //private Bounds meshBounds;
+    public Bounds area; // bounding box for area this tree represents
+    // gonna be bad.. once planets can rotate lol
+    // will prob need to make own thing or have some extension that takes into account planet rotation
 
     public bool splitting = false; // set when a tree is waiting on list/currently being split
     private bool dying = false;    // gets set when a child is merged into parent
@@ -42,7 +42,6 @@ public class Octree {
 
     public Octree(CelestialBody body, Vector3 center, int depth, int branch) {
         this.body = body;
-        this.center = center;
         this.depth = depth;
         this.branch = branch;
         voxelSize = Mathf.Pow(2, (MAX_DEPTH - depth)) * 2.0f;
@@ -127,9 +126,9 @@ public class Octree {
 
         if (depth == 0) {
             //Debug.Log("Called");
-            obj.ov.init(depth, branch, center, area, Color.blue);
+            obj.ov.init(depth, branch, area, Color.blue);
         } else {
-            obj.ov.init(depth, branch, center, area, Color.red);
+            obj.ov.init(depth, branch, area, Color.red);
         }
 
     }
@@ -206,7 +205,7 @@ public class Octree {
             children = new Octree[8];
             for (int i = 0; i < 8; i++) {
                 Vector3 coff = childOffsets[i];
-                Octree child = new Octree(body, center + coff * SIZE * voxelSize * .25f, depth + 1, i);
+                Octree child = new Octree(body, area.center + coff * SIZE * voxelSize * .25f, depth + 1, i);
                 //coff = ((coff + Vector3.one) / 2f) * (SIZE / 2f);
                 //o.passVoxels(voxels, (int)coff.x, (int)coff.y, (int)coff.z);
                 data.Add(child.GenerateMesh());
@@ -279,11 +278,13 @@ public class Octree {
     }
 
     public float GetSqrDistToCamFromArea() {
-        return area.SqrDistance(body.cam.position);
+        //return area.SqrDistance(body.cam.position);
+        return area.SqrDistance(body.player.position);
     }
 
     public float GetSqrDistToCamFromCenter() {
-        return (body.cam.position - center).sqrMagnitude;
+        //return (body.cam.position - area.center).sqrMagnitude;
+        return (body.player.position - area.center).sqrMagnitude;
     }
 
     // can only split if
@@ -349,6 +350,16 @@ public class Octree {
         //        }
         //    }
         //}
+    }
+
+    // given point in worldspace find the smallest octree node that contains this point
+    // returns null if outside the tree
+    public Octree FindOctree(Vector3 point) {
+        if (!area.Contains(point)) {
+            return null;
+        }
+
+        return this;    // wrong but so compiles
     }
 
     public static Vector3[] childOffsets = {
