@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 public class Octree {
 
     // front right - front left - back left - back right, then same order but for bottom layer
+    // start game and pause right at beginning to see layout better
     public Octree[] children;
     // front left back right up down
     //public Octree[] neighbors = new Octree[6];
@@ -44,6 +45,8 @@ public class Octree {
         this.body = body;
         this.depth = depth;
         this.branch = branch;
+
+        // *2 at end makes so highest depth has 2x2x2 meter voxels
         voxelSize = Mathf.Pow(2, (MAX_DEPTH - depth)) * 2.0f;
         // voxel are 2m^3 at max depth
         // then 4, 8, 16, etc
@@ -57,23 +60,27 @@ public class Octree {
         area = new Bounds(center, Vector3.one * voxelSize * SIZE);
     }
 
-    public MeshData GenerateMesh() {
-        //voxels = VoxelUtils.SmoothVoxels(voxels);
-
+    public MeshData GenerateMesh(bool createVoxels) {
         // so while SIZE is 16, which means theres 16 cells/blocks in grid 
         // you need 17 values to be able to construct those blocks
         // (think of 17 points in a grid and the blocks are the 16 spaces in between)
         // if smoothing then need a buffer of 2 around (front and back so +4) for smoothing and normal calculation
         // (so mesh goes from 2-19 basically (0, 1, 20, 21) are not visible in final result)
+
 #if (SMOOTH_SHADING)
-        voxels = WorldGenerator.CreateVoxels(SIZE + 5, depth, voxelSize, pos);
+        if(createVoxels){
+            voxels = WorldGenerator.CreateVoxels(SIZE + 5, depth, voxelSize, pos);
+        }
         MeshData data = MarchingCubes.CalculateMeshData(voxels, voxelSize, 2, 2);
         //data.CalculateVertexSharing();
         //Simplification simp = new Simplification(data.vertices, data.triangles);
         data.normals = VoxelUtils.CalculateSmoothNormals(voxels, voxelSize, data.vertices);
         //data.SplitEdgesCalcSmoothness();
 #else
-        voxels = WorldGenerator.CreateVoxels(SIZE + 1, depth, voxelSize, pos);
+        if (createVoxels) {
+            voxels = WorldGenerator.CreateVoxels(SIZE + 1, depth, voxelSize, pos);
+        }
+
         //if (!needsMesh) {
         //    return null;
         //}
@@ -208,7 +215,7 @@ public class Octree {
                 Octree child = new Octree(body, area.center + coff * SIZE * voxelSize * .25f, depth + 1, i);
                 //coff = ((coff + Vector3.one) / 2f) * (SIZE / 2f);
                 //o.passVoxels(voxels, (int)coff.x, (int)coff.y, (int)coff.z);
-                data.Add(child.GenerateMesh());
+                data.Add(child.GenerateMesh(true));
                 children[i] = child;
             }
             return data;
@@ -355,11 +362,79 @@ public class Octree {
     // given point in worldspace find the smallest octree node that contains this point
     // returns null if outside the tree
     public Octree FindOctree(Vector3 point) {
-        if (!area.Contains(point)) {
+        if (depth == 0 && !area.Contains(point)) {
+            Debug.LogWarning("FindOctree called outside of root");
             return null;
         }
 
-        return this;    // wrong but so compiles
+        if (!hasChildren) {
+            return this;
+        }
+
+        if (point.y > area.center.y) {
+            if (point.z > area.center.z) {
+                if (point.x > area.center.x) {
+                    return children[0].FindOctree(point);
+                } else {
+                    return children[1].FindOctree(point);
+                }
+            } else {
+                if (point.x > area.center.x) {
+                    return children[3].FindOctree(point);
+                } else {
+                    return children[2].FindOctree(point);
+                }
+            }
+        } else {
+            if (point.z > area.center.z) {
+                if (point.x > area.center.x) {
+                    return children[4].FindOctree(point);
+                } else {
+                    return children[5].FindOctree(point);
+                }
+            } else {
+                if (point.x > area.center.x) {
+                    return children[7].FindOctree(point);
+                } else {
+                    return children[6].FindOctree(point);
+                }
+            }
+        }
+
+    }
+
+    public bool IsMaxDepth() {
+        return depth == MAX_DEPTH;
+    }
+
+    // given point in worldspace edit this octrees voxels
+    // point may be outside area so check for that
+    public void EditVoxels(Vector3 point, bool add) {
+        // find local world offset
+        Vector3 local = point - obj.go.transform.position;
+
+        int x = (int)(local.x / voxelSize);
+        int y = (int)(local.y / voxelSize);
+        int z = (int)(local.z / voxelSize);
+
+        // sbyte range [-128, 127]
+
+        int a = add ? -1 : 1;
+        a *= 2;
+        voxels[x, y, z] = (sbyte)Mathf.Clamp(voxels[x, y, z] + a, -128, 127);
+        voxels[x + 1, y, z] = (sbyte)Mathf.Clamp(voxels[x + 1, y, z] + a, -128, 127);
+        voxels[x, y + 1, z] = (sbyte)Mathf.Clamp(voxels[x, y + 1, z] + a, -128, 127);
+        voxels[x + 1, y + 1, z] = (sbyte)Mathf.Clamp(voxels[x + 1, y + 1, z] + a, -128, 127);
+        voxels[x, y, z + 1] = (sbyte)Mathf.Clamp(voxels[x, y, z + 1] + a, -128, 127);
+        voxels[x + 1, y, z + 1] = (sbyte)Mathf.Clamp(voxels[x + 1, y, z + 1] + a, -128, 127);
+        voxels[x, y + 1, z + 1] = (sbyte)Mathf.Clamp(voxels[x, y + 1, z + 1] + a, -128, 127);
+        voxels[x + 1, y + 1, z + 1] = (sbyte)Mathf.Clamp(voxels[x + 1, y + 1, z + 1] + a, -128, 127);
+
+
+        // rebuild mesh immediately
+        Mesh mesh = GenerateMesh(false).CreateMesh();
+        obj.mf.mesh = mesh;
+        col.mc.sharedMesh = obj.mf.sharedMesh;
     }
 
     public static Vector3[] childOffsets = {

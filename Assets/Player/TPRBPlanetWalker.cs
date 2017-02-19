@@ -22,7 +22,7 @@ public class TPRBPlanetWalker : MonoBehaviour {
     [SerializeField]
     [Range(0.0f, 1.0f)]
     [Tooltip("How much control player has while in air\n" +
-        "(0.0 being none and 1.0 being equal to on ground")]
+        "(0.0 being none and 1.0 being equal to ground control")]
     private float airControl = 0.25f;
     [SerializeField]
     [Range(1.0f, 90.0f)]
@@ -41,8 +41,12 @@ public class TPRBPlanetWalker : MonoBehaviour {
     [SerializeField]
     private bool turnTowardsGravity = true;
     [SerializeField]
-    private Transform camPivot;
+    private Transform camPivot; // should be child empty gameobject at eye level for camera
     [SerializeField]
+    private Transform model;    // should be child gameobject that is parent of all visuals for player
+    [SerializeField]
+    private Animator animator;
+
     public bool debugRendering = false;
 
     private float curSpeed = 0f;
@@ -62,12 +66,9 @@ public class TPRBPlanetWalker : MonoBehaviour {
     private float targCamDistance;
     private bool firstPerson = false;
 
-    [SerializeField]
-    private Animator myAnim;
     private Rigidbody myrb;
     private Transform cam;
     private Transform tform;
-    private Transform model;
 
     // get the average of the last few hit normals to undo
     // the interpolation of physics raycasting and spherecasting
@@ -123,7 +124,7 @@ public class TPRBPlanetWalker : MonoBehaviour {
         // collide camera with anything in camera collision layer
         if (!firstPerson) {
             RaycastHit hit;
-            if (Physics.Raycast(camPivot.position, -cam.forward, out hit, camDistance + 1.0f, 1 << cameraCollisionLayer)) {
+            if (Physics.Raycast(camPivot.position, -cam.forward, out hit, camDistance + 1.0f, cameraCollisionLayer.value)) {
                 cam.position = hit.point + cam.forward;
             }
             if (debugRendering) {
@@ -186,21 +187,31 @@ public class TPRBPlanetWalker : MonoBehaviour {
         }
 
 
-        // lerp model to follow main transform rotation 
-        model.rotation = Quaternion.Lerp(model.rotation, tform.rotation, turnRate);
+        if (model.gameObject.activeSelf) {
 
-        // set animation speeds
-        float animSpeed = myrb.velocity.magnitude;
-        // if animSpeed gets too close to one controller starts freakin
-        animSpeed = Mathf.Clamp(animSpeed, 0.1f, 10f);
-        if (!anyInput) {
-            animSpeed = 0.1f;
+            // lerp model to follow main transform rotation 
+            model.rotation = Quaternion.Lerp(model.rotation, tform.rotation, turnRate);
+
+            if (animator) {
+                // set animation speeds
+                float animSpeed = myrb.velocity.magnitude;
+                // if animSpeed gets too close to one controller starts freakin
+                animSpeed = Mathf.Clamp(animSpeed, 0.1f, 10f);
+                if (!anyInput) {
+                    animSpeed = 0.1f;
+                }
+                animator.SetFloat("Speed", animSpeed);
+
+                if (myrb.isKinematic) {
+                    animator.SetFloat("AirTime", 0.0f);
+                    animator.SetBool("Jumping", false);
+                } else {
+                    animator.SetFloat("AirTime", timeSinceGrounded);
+                    Vector3 v = tform.InverseTransformDirection(myrb.velocity);
+                    animator.SetBool("Jumping", v.y > 6f);
+                }
+            }
         }
-        myAnim.SetFloat("Speed", animSpeed);
-        myAnim.SetFloat("AirTime", timeSinceGrounded);
-        Vector3 v = tform.InverseTransformDirection(myrb.velocity);
-        myAnim.SetBool("Jumping", v.y > 8f);
-
     }
 
     void FixedUpdate() {

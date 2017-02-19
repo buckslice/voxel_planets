@@ -11,13 +11,13 @@ public class CelestialBody : MonoBehaviour {
     public float atmosphereRadius = 1000.0f;
     public float gravityRadius = 1500.0f;
 
-    private Octree root = null;
+    public Octree root = null;
 
 #if true
     // Use this for initialization
     void Start() {
         root = new Octree(this, Vector3.zero, 0, 0);
-        root.BuildGameObject(root.GenerateMesh());
+        root.BuildGameObject(root.GenerateMesh(true));
 
         squareSplitLevels = new float[Octree.MAX_DEPTH + 1];
         for (int i = 0; i < squareSplitLevels.Length; i++) {

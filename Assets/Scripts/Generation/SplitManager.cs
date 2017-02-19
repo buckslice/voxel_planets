@@ -162,6 +162,7 @@ public class ColliderObject {
 
     public ColliderObject() {
         go = new GameObject("Collider");
+        go.layer = Layers.Terrain;
         mc = go.AddComponent<MeshCollider>();
     }
 }

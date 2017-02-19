@@ -46,7 +46,7 @@ public class GravityWell : MonoBehaviour {
                 Vector3 g = (tform.position - c.transform.position).normalized * gravity;
                 rb.AddForce(g * rb.mass);
 
-                if (c.CompareTag("Player")) {
+                if (c.CompareTag(Tags.Player)) {
                     TPRBPlanetWalker player = c.gameObject.GetComponent<TPRBPlanetWalker>();
                     if (player && player.gravityStrength <= gravity) {
                         player.gravityStrength = gravity;
