@@ -7,7 +7,7 @@ public static class MarchingCubes {
     // start and end are used to add padding before and after basically
     public static MeshData CalculateMeshData(Array3<sbyte> voxels, float voxelSize, int start = 0, int end = 0) {
         List<Vector3> verts = new List<Vector3>();
-        List<int> tris = new List<int>();
+        //List<int> tris = new List<int>();
 
         // used to be static but now in here so can be multithreaded
         Vector3[] edgeVertices = new Vector3[12];

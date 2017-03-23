@@ -4,36 +4,57 @@ using UnityEditor;
 public class CelestialBody : MonoBehaviour {
 
     public Material mat;
+    public Material testMat;
     public float[] squareSplitLevels;
     public Transform cam;
     public Transform player;
-    public float surfaceRadius = 500.0f;    // need to actually set these based off generation
+    //public float surfaceRadius = 500.0f;    // need to actually set these based off generation
     public float atmosphereRadius = 1000.0f;
     public float gravityRadius = 1500.0f;
 
     public Octree root = null;
 
+    const float maxDepthDist = 10000.0f;
+
 #if true
     // Use this for initialization
     void Start() {
-        root = new Octree(this, Vector3.zero, 0, 0);
+        root = new Octree(this, null, Vector3.zero, 0, 0);
         root.BuildGameObject(root.GenerateMesh(true));
 
         squareSplitLevels = new float[Octree.MAX_DEPTH + 1];
-        for (int i = 0; i < squareSplitLevels.Length; i++) {
-            float level = Mathf.Pow(2f, Octree.MAX_DEPTH - i) * 100f; //64.0f;
-            squareSplitLevels[i] = level * level;
+        int len = squareSplitLevels.Length;
+        squareSplitLevels[len - 1] = maxDepthDist;
+        for (int i = len - 2; i >= 0; --i) {
+            squareSplitLevels[i] = squareSplitLevels[i + 1] * 3.0f;
         }
+
+        // old way of calculating squaresplit levels
+        //for (int i = 0; i < squareSplitLevels.Length; i++) {
+        //    float level = Mathf.Pow(2f, Octree.MAX_DEPTH - i) * 100f; //64.0f;
+        //    squareSplitLevels[i] = level * level;
+        //}
+
         cam = Camera.main.transform;
         player = GameObject.Find("Player").transform;
     }
 
+    float invalidCheckTimer = 0.0f;
     // Update is called once per frame
-    void Update() {
+    void Update() { 
         root.Update();
+
+        invalidCheckTimer -= Time.deltaTime;
+        if (invalidCheckTimer < 0.0f) {
+            if (!root.IsTreeValid()) {
+                Debug.LogError("TREE INVALID DETECTED");
+            }
+            invalidCheckTimer = 2.0f;
+        }
     }
 #endif
 
+// example testing out the simplification post processing step of meshes
 #if false
     float[][][] voxels;
     Simplification simp;
@@ -81,26 +102,34 @@ public class CelestialBody : MonoBehaviour {
     }
 #endif
 
+
+// simple example here
+// currently testing marching tetrahedra implementation
 #if false
 
     void Start() {
-        ChunkObject go = SplitManager.GetObject();
 
-        //MeshData data = IMarchingCubes.CalculateMeshData();
-        bool needsMesh;
-        Array3<sbyte> voxels = WorldGenerator.CreateVoxels(33, 0, 1.0f, Vector3.zero, out needsMesh);
+
+        Array3<sbyte> voxels = WorldGenerator.CreateVoxels(33, 0, 1.0f, Vector3.zero);
 
         MeshData data = MarchingCubes.CalculateMeshData(voxels, 1.0f);
 
-
         Mesh mesh = data.CreateMesh();
 
+        ChunkObject go = SplitManager.GetObject();
         go.mf.sharedMesh = mesh;
-        go.mr.material = mat;
+        go.mr.material = testMat;
         //go.ov.bounds = new Bounds()
         //go.ov.shouldDraw = true;
 
-        
+        MeshData data2 = MarchingTetrahedra.CalculateMeshData(voxels, 1.0f);
+        data2.CalculateSharedNormals();
+        Mesh mesh2 = data2.CreateMesh();
+
+        ChunkObject go2 = SplitManager.GetObject();
+        go2.mf.sharedMesh = mesh2;
+        go2.mr.material = testMat;
+
     }
 #endif
 

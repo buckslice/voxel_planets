@@ -9,7 +9,7 @@ public class VoxelMining : MonoBehaviour {
 
     public LayerMask terrainLayer;
 
-    public Material lineMat;
+    public Material meshMat;
     public DrawBounds drawer;
     public Light flashLight;
 
@@ -63,6 +63,8 @@ public class VoxelMining : MonoBehaviour {
             Octree tree = planet.root.FindOctree(transform.position);
             if (tree != null) {
                 drawer.SetBounds(tree.area);
+
+                Graphics.DrawMesh(tree.GetMesh(), tree.obj.go.transform.position, Quaternion.identity, meshMat, 0);
             }
         }
 

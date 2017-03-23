@@ -9,71 +9,54 @@ using System.Collections.Generic;
 [RequireComponent(typeof(Rigidbody))]
 public class TPRBPlanetWalker : MonoBehaviour {
 
-    [SerializeField]
-    private float walkSpeed = 7f;
-    [SerializeField]
-    private float runSpeed = 14f;
-    [SerializeField]
-    private float jumpSpeed = 10f;
-    [SerializeField]
-    private bool canSprint = true;
-    [SerializeField]
-    private bool canJump = true;
-    [SerializeField]
+    public float walkSpeed = 7f;
+    public float runSpeed = 14f;
+    public float jumpSpeed = 10f;
+    public bool canSprint = true;
+    public bool canJump = true;
     [Range(0.0f, 1.0f)]
-    [Tooltip("How much control player has while in air\n" +
-        "(0.0 being none and 1.0 being equal to ground control")]
-    private float airControl = 0.25f;
-    [SerializeField]
+    [Tooltip("How much control player has while in air\n(0.0 being none and 1.0 being equal to ground control")]
+    public float airControl = 0.25f;
     [Range(1.0f, 90.0f)]
-    private float steepnessThreshold = 45.0f;
-    [SerializeField]
+    public float steepnessThreshold = 45.0f;
     [Range(1.0f, 10.0f)]
-    private float mouseSensitivity = 5.0f;
-    [SerializeField]
-    private LayerMask cameraCollisionLayer;
-    [SerializeField]
-    private float camDistance = 10f; // r in spherecial coordinates
-    [SerializeField]
+    public float mouseSensitivity = 5.0f;
+    public LayerMask cameraCollisionLayer;
+    public float camDistance = 10f; // r in spherecial coordinates
     public Vector3 gravitySource = Vector3.zero;
-    [SerializeField]
     public float gravityStrength = 10.0f;
-    [SerializeField]
-    private bool turnTowardsGravity = true;
-    [SerializeField]
-    private Transform camPivot; // should be child empty gameobject at eye level for camera
-    [SerializeField]
-    private Transform model;    // should be child gameobject that is parent of all visuals for player
-    [SerializeField]
-    private Animator animator;
-
+    public bool turnTowardsGravity = true;
+    public Transform camPivot; // should be child empty gameobject at eye level for camera
+    public Transform model;    // should be child gameobject that is parent of all visuals for player
+    public Animator animator;
     public bool debugRendering = false;
+    public CelestialBody planet;
 
-    private float curSpeed = 0f;
-    private const float turnRate = 0.2f;   // rate at which model lerps to transform direction
+    float curSpeed = 0f;
+    const float turnRate = 0.2f;   // rate at which model lerps to transform direction
 
-    private bool grounded = false;
-    private bool lastGrounded = false;
-    private bool jumping = false;
-    private bool anyInput = false;
-    private bool flyMode = false;
+    bool grounded = false;
+    bool lastGrounded = false;
+    bool jumping = false;
+    bool anyInput = false;
+    bool flyMode = false;
 
-    private float timeSinceGrounded = 1.0f;
-    private float timeSinceHitJump = 1.0f;
+    float timeSinceGrounded = 1.0f;
+    float timeSinceHitJump = 1.0f;
     float jumpCooldown = 0.0f;
-    private const float comeToRestTime = 0.5f;
-    private float timeTillRest = comeToRestTime;
-    private float targCamDistance;
-    private bool firstPerson = false;
+    const float comeToRestTime = 0.5f;
+    float timeTillRest = comeToRestTime;
+    float targCamDistance;
+    bool firstPerson = false;
 
-    private Rigidbody myrb;
-    private Transform cam;
-    private Transform tform;
+    Rigidbody myrb;
+    Transform cam;
+    Transform tform;
 
     // get the average of the last few hit normals to undo
     // the interpolation of physics raycasting and spherecasting
-    private const int normalCount = 5;
-    private List<Vector3> hitNormals = new List<Vector3>();
+    const int normalCount = 5;
+    List<Vector3> hitNormals = new List<Vector3>();
 
     void Start() {
         tform = transform;
@@ -171,9 +154,12 @@ public class TPRBPlanetWalker : MonoBehaviour {
 
         if (Input.GetKeyDown(KeyCode.F1)) {
             flyMode = !flyMode;
-            myrb.isKinematic = flyMode;
         }
 
+        Octree tree = planet.root.FindOctree(transform.position);
+        flyMode = tree == null || !tree.IsMaxDepth();
+
+        myrb.isKinematic = flyMode;
         if (flyMode) {
             if (turnTowardsGravity) {
                 Vector3 gravDir = (gravitySource - tform.position).normalized;
@@ -181,7 +167,7 @@ public class TPRBPlanetWalker : MonoBehaviour {
                 tform.rotation = Quaternion.LookRotation(gravForward, -gravDir);
             }
 
-            // hit button to increase on decrease flight speed by log amount or something
+            // hit button to increase or decrease flight speed by log amount or something
             //float flightSpeed = 50.0f;
             //transform.position += gravForward * 
         }
@@ -215,7 +201,7 @@ public class TPRBPlanetWalker : MonoBehaviour {
     }
 
     void FixedUpdate() {
-        if (flyMode) {
+        if (flyMode) {  // fly mode does not use physics-based movement (ITS HAX DUDE)
             return;
         }
 

@@ -6,8 +6,8 @@ Material:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
-  m_Name: Planet
-  m_Shader: {fileID: 4800000, guid: 9d13de0ebc8a66b4da1ead0caad8d95b, type: 3}
+  m_Name: TestMat
+  m_Shader: {fileID: 46, guid: 0000000000000000f000000000000000, type: 0}
   m_ShaderKeywords: _EMISSION
   m_LightmapFlags: 1
   m_CustomRenderQueue: -1
@@ -15,12 +15,6 @@ Material:
   m_SavedProperties:
     serializedVersion: 2
     m_TexEnvs:
-    - first:
-        name: _Bottom
-      second:
-        m_Texture: {fileID: 2800000, guid: bf3f083f95d5f274eacd4f5f9b45d015, type: 3}
-        m_Scale: {x: 0.1, y: 0.1}
-        m_Offset: {x: 0, y: 0}
     - first:
         name: _BumpMap
       second:
@@ -75,22 +69,7 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - first:
-        name: _Side
-      second:
-        m_Texture: {fileID: 2800000, guid: bf3f083f95d5f274eacd4f5f9b45d015, type: 3}
-        m_Scale: {x: 0.1, y: 0.1}
-        m_Offset: {x: 0, y: 0}
-    - first:
-        name: _Top
-      second:
-        m_Texture: {fileID: 2800000, guid: 4815ee9cd1612f04ba126ab9211aed09, type: 3}
-        m_Scale: {x: 0.3, y: 0.3}
-        m_Offset: {x: 0, y: 0}
     m_Floats:
-    - first:
-        name: _BottomScale
-      second: 2
     - first:
         name: _BumpScale
       second: 1
@@ -108,7 +87,7 @@ Material:
       second: 1
     - first:
         name: _Glossiness
-      second: 0.3
+      second: 0.5
     - first:
         name: _GlossyReflections
       second: 1
@@ -125,12 +104,6 @@ Material:
         name: _Parallax
       second: 0.02
     - first:
-        name: _ShadowStrength
-      second: 1
-    - first:
-        name: _SideScale
-      second: 0.26
-    - first:
         name: _SmoothnessTextureChannel
       second: 0
     - first:
@@ -139,15 +112,6 @@ Material:
     - first:
         name: _SrcBlend
       second: 1
-    - first:
-        name: _TopScale
-      second: 0.07
-    - first:
-        name: _Transparency
-      second: 1
-    - first:
-        name: _TriplanarBlendSharpness
-      second: 7.4
     - first:
         name: _UVSec
       second: 0

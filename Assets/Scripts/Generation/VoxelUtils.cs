@@ -156,9 +156,33 @@ public class MeshData {
             Vector3 norm = Vector3.Cross(vb - va, vc - va).normalized;
             //Vector3 norm = Vector3.Cross(vb - va, vc - va);
 
-            //normals[a] = norm;
-            //normals[b] = norm;
-            //normals[c] = norm;
+            normals[a] = norm;
+            normals[b] = norm;
+            normals[c] = norm;
+
+            //// only do this part and last part if using vertex sharing
+            //normals[a] += norm;
+            //normals[b] += norm;
+            //normals[c] += norm;
+        }
+        //for (int i = 0; i < normals.Length; ++i) {
+        //    normals[i].Normalize();
+        //}
+    }
+
+    public void CalculateSharedNormals() {
+        normals = new Vector3[vertices.Length];
+        int tris = triangles.Length / 3;
+        for (int i = 0; i < tris; ++i) {
+            int a = triangles[i * 3];
+            int b = triangles[i * 3 + 1];
+            int c = triangles[i * 3 + 2];
+
+            Vector3 va = vertices[a];
+            Vector3 vb = vertices[b];
+            Vector3 vc = vertices[c];
+
+            Vector3 norm = Vector3.Cross(vb - va, vc - va);
 
             // only do this part and last part if using vertex sharing
             normals[a] += norm;

@@ -47,18 +47,52 @@ public class Density  {
         float d = 0.0f;
 
         // FRACTAL PLANET ----------------------------------------------------------------
-        float rad = 800.0f;
+        //float rad = 800.0f;
+        //Vector3 wp = worldPos;
+        //wp.y -= rad;
+        //float planet = (wp - new Vector3(0, -rad, 0)).magnitude - rad;
+        //planet += Noise.Fractal3(wp, new Vector3(-100, 10, 25), 5, 0.009f, 0.45f, 2.07f) * 25.0f;
+
+        //float sphere = Sphere(worldPos, Vector3.zero, 785.0f);
+        //sphere += Noise.Fractal3(worldPos, Vector3.zero, 3, 0.05f);
+
+        //d = Union(planet, sphere);
+        ////d = sphere;
+        //--------------------------------------------------------------------------------
+
+        // BIG PLANET ------------------------------------------------------
+        //float rad = 14000.0f;
+        //Vector3 wp = worldPos;
+        //wp.y -= rad;
+        //float planet = (wp - new Vector3(0, -rad, 0)).magnitude - rad;
+        ////planet += Noise.Fractal3(wp, Vector3.one * 1000.0f, 5, 0.0005f, 0.5f, 2f) * 30.0f;
+        //planet += Noise.Fractal3(wp, Vector3.one * 1000.0f, 7, 0.001f, 0.5f, 2f) * 100.0f;
+        //d = planet;
+
+        ////float sphere = Sphere(worldPos, Vector3.zero, 785.0f);
+        ////sphere += Noise.Fractal3(worldPos, Vector3.zero, 3, 0.05f);
+        ////d = Union(planet, sphere);
+        ////d = sphere;
+        //------------------------------------------------------------------
+
+        //warping test----------------------------
+        float rad = 14000.0f;
         Vector3 wp = worldPos;
         wp.y -= rad;
+
+       
+        //float qx = Noise.Fractal3(wp, new Vector3(0.0f, 0.0f, 0.0f), 3, 0.01f);
+        //float qy = Noise.Fractal3(wp, new Vector3(5.2f, 1.3f, -2.0f), 3, 0.01f);
+        //float qz = Noise.Fractal3(wp, new Vector3(1.5f, 2.7f, 3.7f), 3, 0.01f);
+        //wp = wp + 20.0f * new Vector3(qx, qy, qz);
+
         float planet = (wp - new Vector3(0, -rad, 0)).magnitude - rad;
-        planet += Noise.Fractal3(wp, new Vector3(-100, 10, 25), 5, 0.009f, 0.45f, 2.07f) * 25.0f;
+        //planet += Noise.Fractal3(wp, Vector3.one * 1000.0f, 5, 0.0005f, 0.5f, 2f) * 30.0f;
+        planet += Noise.Fractal3(wp, Vector3.one * 1000.0f, 8, 0.001f, 0.5f, 2f) * 100.0f;
+        d = planet;
 
-        float sphere = Sphere(worldPos, Vector3.zero, 785.0f);
-        sphere += Noise.Fractal3(worldPos, Vector3.zero, 3, 0.05f);
 
-        d = Union(planet, sphere);
-        //d = sphere;
-        //--------------------------------------------------------------------------------
+        //-----------------------------------------
 
         // WORLEY NOISE TEST--------------------------------------------------------------
         // change fractal3 code to use worley instead
@@ -75,8 +109,17 @@ public class Density  {
         //d += (float)Noise.Simplex3(worldPos.x * 1.96, worldPos.y * 1.96, worldPos.z * 1.96) * 0.5f;
         //d += (float)Noise.Simplex3(worldPos.x * 1.01, worldPos.y * 1.01, worldPos.z * 1.01) * 1.0f;
 
-        //Quaternion q = Quaternion.AngleAxis(45.0f, Vector3.up);
-        //worldPos = q * worldPos;
+        //simple rotated cube test -------------------------------------------------------
+        //worldPos = Quaternion.AngleAxis(45.0f, Vector3.right) * worldPos;
+        //worldPos = Quaternion.AngleAxis(45.0f, Vector3.up) * worldPos;
+        //d = Cuboid(worldPos, new Vector3(20, 0, 10), Vector3.one * 5);
+        //--------------------------------------------------------------------------------
+
+        //d = worldPos.y - 10.0f;
+
+        //float sphere = Sphere(worldPos, new Vector3(20.0f, 20.0f, 20.0f), 8.0f);
+        //float torus = Torus(worldPos, new Vector3(20.0f, 20.0f, 30.0f), new Vector2(12.0f, 4.0f));
+        //d = Union(sphere,torus);
 
         //float sphere = Sphere(worldPos, new Vector3(200.0f, 200.0f, 160.0f), 200.0f);
         //float torus = Torus(worldPos, new Vector3(200.0f, 200.0f, -80.0f), new Vector2(200.0f, 80.0f));
@@ -96,12 +139,10 @@ public class Density  {
         ////double d = w.F[1] - w.F[0];
 
         // BASIC FLAT FRACTAL ------------------------------------------------------------
-        //d = -worldPos.y + 20.0f;
-        //d += Noise.Fractal3(worldPos, new Vector3(0, 25, 25), 9, 0.01f, 0.5f, 2.0f) * 20.0f;
+        //d = worldPos.y;
+        //d += Noise.Fractal3(worldPos, new Vector3(-100, 600, -500), 9, 0.01f, 0.5f, 2.0f) * 20.0f;
         //--------------------------------------------------------------------------------
 
-        //d = -worldPos.y + 4.0f;
-        //d += Noise.Fractal3(worldPos, new Vector3(0, 0, 25), 9, 0.005f, 0.5f, 2.0f) * 20.0f;
 
         return d;
     }

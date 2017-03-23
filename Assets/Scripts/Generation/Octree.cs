@@ -1,5 +1,5 @@
 ﻿
-//#define SMOOTH_SHADING
+#define SMOOTH_SHADING
 
 using UnityEngine;
 using System.Threading.Tasks;
@@ -9,17 +9,18 @@ public class Octree {
 
     // front right - front left - back left - back right, then same order but for bottom layer
     // start game and pause right at beginning to see layout better
-    public Octree[] children;
+    public Octree[] children;   // would be cool to have all octree stored in same array somehow, or custom memory management like in dtb pools
     // front left back right up down
-    //public Octree[] neighbors = new Octree[6];
+    public Octree[] neighbors = new Octree[6];
+    public Octree parent;
 
     public bool hasChildren = false;
     public int depth;  // 0 is root, MAX_LEVEL is depth limit
-    private int branch;  // which child of your parent are you
+    int branch;  // which child of your parent are you
 
-    private Array3<sbyte> voxels; // need to save for vertex modification
+    Array3<sbyte> voxels; // need to save for vertex modification
 
-    private Vector3 pos;    // position of voxel grid (denotes the corner so it gets offset to remain centered)
+    Vector3 pos;    // position of voxel grid (denotes the corner so it gets offset to remain centered)
 
     public CelestialBody body;
 
@@ -27,7 +28,7 @@ public class Octree {
     public ColliderObject col = null;
 
     public const int SIZE = 16;        // number of voxel cells in octree
-    public const int MAX_DEPTH = 6;     // max depth meshes can split to
+    public const int MAX_DEPTH = 10;     // max depth meshes can split to
     public readonly float voxelSize;   // size of each voxel for this tree (in meters)
 
     public Bounds area; // bounding box for area this tree represents
@@ -35,13 +36,14 @@ public class Octree {
     // will prob need to make own thing or have some extension that takes into account planet rotation
 
     public bool splitting = false; // set when a tree is waiting on list/currently being split
-    private bool dying = false;    // gets set when a child is merged into parent
+    bool dying = false;    // gets set when a child is merged into parent
 
     public const float colliderGenDistance = 50.0f;
     public const float fadeRate = 1.0f; // 0.5f would be half of normal time, so 2 seconds
-    private float morphProg = 0.0f;   // "percent morphed" 0 at morph start, 1 when morph is finished
+    float morphProg = 0.0f;   // "percent morphed" 0 at morph start, 1 when morph is finished
 
-    public Octree(CelestialBody body, Vector3 center, int depth, int branch) {
+
+    public Octree(CelestialBody body, Octree parent, Vector3 center, int depth, int branch) {
         this.body = body;
         this.depth = depth;
         this.branch = branch;
@@ -68,14 +70,15 @@ public class Octree {
         // (so mesh goes from 2-19 basically (0, 1, 20, 21) are not visible in final result)
 
 #if (SMOOTH_SHADING)
-        if(createVoxels){
+        if (createVoxels) {
             voxels = WorldGenerator.CreateVoxels(SIZE + 5, depth, voxelSize, pos);
         }
         MeshData data = MarchingCubes.CalculateMeshData(voxels, voxelSize, 2, 2);
         //data.CalculateVertexSharing();
         //Simplification simp = new Simplification(data.vertices, data.triangles);
-        data.normals = VoxelUtils.CalculateSmoothNormals(voxels, voxelSize, data.vertices);
+        //data.normals = VoxelUtils.CalculateSmoothNormals(voxels, voxelSize, data.vertices);
         //data.SplitEdgesCalcSmoothness();
+        data.CalculateSharedNormals();  // todo figure out why this doesnt make it smoothed...
 #else
         if (createVoxels) {
             voxels = WorldGenerator.CreateVoxels(SIZE + 1, depth, voxelSize, pos);
@@ -173,7 +176,9 @@ public class Octree {
 
     // 0 -> 0.5 fade children in
     // 0.5 -> 1.0 fade parent out
-    private void GeoMorphInternal() {
+    // should be based on bands like old spacegame
+    // so can be stopped at half morph if on border. then do morphing in both directions
+    void GeoMorphInternal() {
         if (morphProg < 1.0f) {
             morphProg += Time.deltaTime * fadeRate;
             if (morphProg >= 1.0f) {
@@ -181,10 +186,12 @@ public class Octree {
             } else if (morphProg >= 0.5f) {
                 obj.SetTransparency((1.0f - morphProg) * 2.0f);
                 // todo set cast shadow strength here as well!
+                // not sure if this is even a thing actually
             }
         }
     }
-    private void GeoMorphLeaf() {
+
+    void GeoMorphLeaf() {
         if (morphProg < 0.5f) {
             morphProg += Time.deltaTime * fadeRate;
             if (morphProg >= 0.5f) {
@@ -196,15 +203,28 @@ public class Octree {
         }
     }
 
-    //public Octree GetBlockingNeighbors() {
-    //    for (int i = 0; i < 6; i++) {
-    //        Octree tree = neighbors[i];
-    //        if (tree != null && tree.depth < depth && !tree.onSplitList) {
-    //            return tree;
-    //        }
-    //    }
-    //    return null;
-    //}
+    void SetGeomorph() {
+        if(parent == null) {
+            return;
+        }
+
+        float mergeDist = DistToMerge();
+        // finish this. based on old space game code
+        // prob just do this only for leafs because parent will be morph 1 whole time
+        // then once leafs are 1 parent just morphs out? im talking bout distance stalling (sorry this makes no sense prob im tired)
+        //float mergeOnRec = 30f * Mathf.Pow(2, relativeRec);
+        //morphFactor = Mathf.Min((Time.time - timeAtCreation) / timeFullyCreated, Mathf.Min(mergeDist / mergeOnRec, 1f));
+    }
+
+    float DistToMerge() {
+        if (depth == 0) {
+            return -1.0f;
+        }
+        float dist = (body.player.position - parent.area.center).magnitude;
+        float level = body.squareSplitLevels[depth - 1];  // parents depth
+        float val = level - dist;
+        return val < 0.0f ? 0.0f : val;
+    }
 
     public Task<SplitData> SplitAsync() {
         return Task<SplitData>.Factory.StartNew(() => {
@@ -212,12 +232,13 @@ public class Octree {
             children = new Octree[8];
             for (int i = 0; i < 8; i++) {
                 Vector3 coff = childOffsets[i];
-                Octree child = new Octree(body, area.center + coff * SIZE * voxelSize * .25f, depth + 1, i);
-                //coff = ((coff + Vector3.one) / 2f) * (SIZE / 2f);
-                //o.passVoxels(voxels, (int)coff.x, (int)coff.y, (int)coff.z);
+                Octree child = new Octree(body, this, area.center + coff * SIZE * voxelSize * .25f, depth + 1, i);
+
                 data.Add(child.GenerateMesh(true));
                 children[i] = child;
             }
+
+
             return data;
         }, TaskCreationOptions.None);
     }
@@ -236,52 +257,14 @@ public class Octree {
             c.obj.SetTransparency(0.0f);
         }
         obj.SetTransparency(1.0f);
-        morphProg = 0.0f;
+        morphProg = 0.0f;   // now used fade yourself out
         obj.mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
         //SetChildNeighbors();
-        UpdateNeighbors(true);
         if (depth > 0) {
             obj.ov.shouldDraw = false;
         }
         hasChildren = true;
-    }
-
-    //public void SetChildNeighbors() {
-    //    // need more updating for if higher rec neighbors are looking at you when you split
-
-    //    //children[0].neighbors[0] = neighbors[0];
-    //    //children[1].neighbors[0] = neighbors[0];
-
-    //    // 0 1 4 5 Front 0
-    //    // 1 2 5 6 Left  4
-    //    // 2 3 6 7 Back  3
-    //    // 3 0 7 4 Right 1
-    //    // 0 1 2 3 Up    2
-    //    // 4 5 6 7 Down  5
-
-    //    // 0 4
-    //    // 1 5
-    //    // 2 6
-    //    // 3 7
-    //    for (int i = 0; i < 6; i++) {
-    //        for (int j = 0; j < 4; j++) {
-    //            children[neb[i][j]].neighbors[i] = neighbors[i];
-    //        }
-    //    }
-    //}
-
-    private static int[][] neb = new int[][] {
-        new int[] {0,1,4,5},
-        new int[] {1,2,5,6},
-        new int[] {2,3,6,7},
-        new int[] {3,0,7,4},
-        new int[] {0,1,2,3},
-        new int[] {4,5,6,7}
-    };
-
-    private void UpdateNeighbors(bool splitting) {
-
     }
 
     public float GetSqrDistToCamFromArea() {
@@ -294,19 +277,19 @@ public class Octree {
         return (body.player.position - area.center).sqrMagnitude;
     }
 
-    // can only split if
-    //    depth is less than max depth
-    //    not dying
-    //    fully opaque
     public bool ShouldSplit() {
-        return depth < MAX_DEPTH && !dying && morphProg >= 1.0f && GetSqrDistToCamFromCenter() < body.squareSplitLevels[depth];
+        return CanSplit() && GetSqrDistToCamFromCenter() < body.squareSplitLevels[depth];
     }
 
-    private bool ShouldMerge() {
+    bool CanSplit() {
+        return depth < MAX_DEPTH && !dying && morphProg >= 1.0f;
+    }
+
+    bool ShouldMerge() {
         return CanMerge() && GetSqrDistToCamFromCenter() > body.squareSplitLevels[depth];
     }
 
-    private bool CanMerge() {
+    bool CanMerge() {
         return !children[0].hasChildren
             && !children[1].hasChildren
             && !children[2].hasChildren
@@ -318,8 +301,7 @@ public class Octree {
     }
 
     // called when parent merges 8 children
-    private void Merge() {
-        UpdateNeighbors(false);
+    void Merge() {
         for (int i = 0; i < 8; i++) {
             children[i].OnGettingMerged();
             children[i] = null;
@@ -335,7 +317,7 @@ public class Octree {
     }
 
     // called on children getting merged by their parent
-    private void OnGettingMerged() {
+    void OnGettingMerged() {
         Object.Destroy(obj.mf.mesh);
         SplitManager.ReturnObject(obj);
         if (col != null) {
@@ -343,20 +325,6 @@ public class Octree {
             col = null;
         }
         dying = true;
-    }
-
-    public void PassVoxels(float[][][] v, int xo, int yo, int zo) {
-        // PROB DOESNT WORK
-        // because smoothing changes the voxels
-        // wait F smoothing!!!
-
-        //for (int x = 2; x < SIZE / 2; x++) {
-        //    for (int y = 0; y < SIZE / 2; y++) {
-        //        for (int z = 0; z < SIZE / 2; z++) {
-        //            voxels[x * 2][y * 2][z * 2] = v[x + xo][y + yo][z + zo];
-        //        }
-        //    }
-        //}
     }
 
     // given point in worldspace find the smallest octree node that contains this point
@@ -406,9 +374,15 @@ public class Octree {
     public bool IsMaxDepth() {
         return depth == MAX_DEPTH;
     }
+    public Mesh GetMesh() {
+        return obj.mf.mesh;
+    }
 
     // given point in worldspace edit this octrees voxels
     // point may be outside area so check for that
+    // need to generalize for edit to get passed to tree root and 
+    // passed down to all valid leafs it hits and edit them
+    // also to work with different shapes and sizes of edits
     public void EditVoxels(Vector3 point, bool add) {
         // find local world offset
         Vector3 local = point - obj.go.transform.position;
@@ -448,4 +422,83 @@ public class Octree {
         new Vector3(1, -1, -1)
     };
 
+    // checks some things to make sure octree state is valid
+    public bool IsTreeValid() {
+        if (hasChildren) {
+            if (children.Length != 8) {
+                return false;
+            }
+            if (obj.go.transform.childCount != 8) {
+                return false;
+            }
+            for (int i = 0; i < children.Length; ++i) {
+                if (!children[i].IsTreeValid()) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+
+    //// child order ufr,ufl,ubl,ubr,ffr,ffl,fbl,fbr
+    //// neighbor order f,l,b,r,u,d
+    //// was gonna make a lookup table but FOKCIT
+    //// this cant happen async btw
+    //void SetChildNeighbors() {
+    //    // basic cases, each new child's neighbors is 3 of children
+    //    children[0].neighbors[1] = children[1];
+    //    children[0].neighbors[2] = children[3];
+    //    children[0].neighbors[5] = children[4];
+    //    children[1].neighbors[2] = children[2];
+    //    children[1].neighbors[3] = children[0];
+    //    children[1].neighbors[5] = children[5];
+    //    children[2].neighbors[0] = children[1];
+    //    children[2].neighbors[3] = children[3];
+    //    children[2].neighbors[5] = children[6];
+    //    children[3].neighbors[0] = children[0];
+    //    children[3].neighbors[1] = children[2];
+    //    children[3].neighbors[5] = children[7];
+    //    children[4].neighbors[1] = children[5];
+    //    children[4].neighbors[2] = children[7];
+    //    children[4].neighbors[4] = children[0];
+    //    children[5].neighbors[2] = children[6];
+    //    children[5].neighbors[3] = children[4];
+    //    children[5].neighbors[4] = children[1];
+    //    children[6].neighbors[0] = children[5];
+    //    children[6].neighbors[3] = children[7];
+    //    children[6].neighbors[4] = children[2];
+    //    children[7].neighbors[0] = children[4];
+    //    children[7].neighbors[1] = children[6];
+    //    children[7].neighbors[4] = children[3];
+
+    //    // for each of these need to check if neighbor has kids
+    //    // if so then make the right kid your neighbor and update their neighbor to be u
+    //    // this seems like a lot of work just to have no big gaps between splits...
+    //    // f this for now, not even stitching anyways
+    //    children[0].neighbors[0] = neighbors[0].hasChildren ? neighbors[0].kid ?;
+    //    children[0].neighbors[3] = neighbors[3];
+    //    children[0].neighbors[4] = neighbors[4];
+    //    children[1].neighbors[0] = neighbors[0];
+    //    children[1].neighbors[1] = neighbors[1];
+    //    children[1].neighbors[4] = neighbors[4];
+    //    children[2].neighbors[1] = neighbors[1];
+    //    children[2].neighbors[2] = neighbors[2];
+    //    children[2].neighbors[4] = neighbors[4];
+    //    children[3].neighbors[2] = neighbors[2];
+    //    children[3].neighbors[3] = neighbors[3];
+    //    children[3].neighbors[4] = neighbors[4];
+    //    children[4].neighbors[0] = neighbors[0];
+    //    children[4].neighbors[3] = neighbors[3];
+    //    children[4].neighbors[5] = neighbors[5];
+    //    children[5].neighbors[0] = neighbors[0];
+    //    children[5].neighbors[1] = neighbors[1];
+    //    children[5].neighbors[5] = neighbors[5];
+    //    children[6].neighbors[1] = neighbors[1];
+    //    children[6].neighbors[2] = neighbors[2];
+    //    children[6].neighbors[5] = neighbors[5];
+    //    children[7].neighbors[2] = neighbors[2];
+    //    children[7].neighbors[3] = neighbors[3];
+    //    children[7].neighbors[5] = neighbors[5];
+    //}
 }

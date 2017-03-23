@@ -18,7 +18,7 @@ public class GravityWell : MonoBehaviour {
     private Transform tform;
 
     // Use this for initialization
-    void Start() {
+    void Awake() {
         tform = transform;
         cb = GetComponent<CelestialBody>();
 
@@ -102,10 +102,10 @@ public class GravityWell : MonoBehaviour {
 
     // draws sphere of influence
     void OnDrawGizmos() {
-        if (drawGizmo) {
-            Gizmos.color = Color.red;
+        if (drawGizmo && cb) {
+            Gizmos.color = Color.yellow;
             //Gizmos.DrawWireSphere(transform.position, cb.gravityRadius);
-            Gizmos.DrawWireMesh(sphereMesh, transform.position, Quaternion.identity, Vector3.one * cb.gravityRadius * 2.0f);
+            Gizmos.DrawWireMesh(sphereMesh, transform.position, Quaternion.identity, Vector3.one * cb.gravityRadius);
         }
     }
 }

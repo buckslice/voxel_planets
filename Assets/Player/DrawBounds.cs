@@ -42,7 +42,7 @@ public class DrawBounds : MonoBehaviour {
         lineMat.SetPass(0);
 
         GL.Begin(GL.LINES);
-        GL.Color(Color.red);
+        GL.Color(Color.white);
 
         for (int i = 0; i < 4; ++i) {
             // forward lines

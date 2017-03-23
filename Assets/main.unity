@@ -20,7 +20,7 @@ RenderSettings:
   m_FogDensity: 0.01
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0.212, g: 0.227, b: 0.259, a: 1}
+  m_AmbientSkyColor: {r: 0.7794118, g: 0.9087221, b: 1, a: 1}
   m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
   m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
   m_AmbientIntensity: 1.5
@@ -106,7 +106,7 @@ Prefab:
       objectReference: {fileID: 0}
     - target: {fileID: 4000010911483298, guid: 27765a2806fc16d47ad83e44b47d59ed, type: 2}
       propertyPath: m_LocalPosition.y
-      value: 850
+      value: 14099.44
       objectReference: {fileID: 0}
     - target: {fileID: 4000010911483298, guid: 27765a2806fc16d47ad83e44b47d59ed, type: 2}
       propertyPath: m_LocalPosition.z
@@ -142,6 +142,16 @@ Prefab:
       propertyPath: drawer
       value: 
       objectReference: {fileID: 1822657664}
+    - target: {fileID: 114404295406382948, guid: 27765a2806fc16d47ad83e44b47d59ed,
+        type: 2}
+      propertyPath: planet
+      value: 
+      objectReference: {fileID: 979317405}
+    - target: {fileID: 114573598571150950, guid: 27765a2806fc16d47ad83e44b47d59ed,
+        type: 2}
+      propertyPath: meshMat
+      value: 
+      objectReference: {fileID: 2100000, guid: 097b51d400f87c24193f3686d4e2478f, type: 2}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: 27765a2806fc16d47ad83e44b47d59ed, type: 2}
   m_IsPrefabParent: 0
@@ -249,12 +259,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mat: {fileID: 2100000, guid: f720fa7552efe2d4f951aa61e8e11eba, type: 2}
+  testMat: {fileID: 2100000, guid: d9b480fafe34bfd4d969afd8d8636f5c, type: 2}
   squareSplitLevels: []
   cam: {fileID: 0}
   player: {fileID: 0}
-  surfaceRadius: 500
-  atmosphereRadius: 1000
-  gravityRadius: 1500
+  atmosphereRadius: 16000
+  gravityRadius: 20000
 --- !u!4 &979317406
 Transform:
   m_ObjectHideFlags: 0
@@ -330,7 +340,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8845ba1ed13a0fc42a742f6f934721e6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxConcurrentTasks: 4
+  maxConcurrentTasks: 8
   splitCountText: {fileID: 869325347}
 --- !u!4 &1064669758
 Transform:
@@ -442,7 +452,7 @@ Light:
     m_Resolution: -1
     m_CustomResolution: -1
     m_Strength: 1
-    m_Bias: 0.05
+    m_Bias: 0.1
     m_NormalBias: 0.4
     m_NearPlane: 0.2
   m_Cookie: {fileID: 0}
@@ -626,7 +636,7 @@ MonoBehaviour:
 
     F1  flymode
 
-    F2  boundsview
+    F2  chunkview
 
     TAB hide'
 --- !u!222 &1819611049
@@ -698,15 +708,15 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0.019607844}
+  m_BackGroundColor: {r: 0, g: 0.38854194, b: 0.75735295, a: 0.019607844}
   m_NormalizedViewPortRect:
     serializedVersion: 2
     x: 0
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.3
-  far clip plane: 1000
+  near clip plane: 1
+  far clip plane: 10000
   field of view: 60
   orthographic: 0
   orthographic size: 5
