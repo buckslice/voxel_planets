@@ -102,7 +102,7 @@ public class TPRBPlanetWalker : MonoBehaviour {
         camDistance = Mathf.Lerp(camDistance, firstPerson ? 0.0f : targCamDistance, Time.deltaTime * 5.0f);
         cam.localPosition = new Vector3(0, 0, -camDistance);
 
-        model.gameObject.SetActive(!firstPerson);
+        model.gameObject.SetActive(camDistance >= minDist);
 
         // collide camera with anything in camera collision layer
         if (!firstPerson) {

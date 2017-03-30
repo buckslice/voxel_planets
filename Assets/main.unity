@@ -132,6 +132,11 @@ Prefab:
       propertyPath: m_RootOrder
       value: 3
       objectReference: {fileID: 0}
+    - target: {fileID: 114404295406382948, guid: 27765a2806fc16d47ad83e44b47d59ed,
+        type: 2}
+      propertyPath: planet
+      value: 
+      objectReference: {fileID: 979317405}
     - target: {fileID: 114573598571150950, guid: 27765a2806fc16d47ad83e44b47d59ed,
         type: 2}
       propertyPath: planet
@@ -142,16 +147,6 @@ Prefab:
       propertyPath: drawer
       value: 
       objectReference: {fileID: 1822657664}
-    - target: {fileID: 114404295406382948, guid: 27765a2806fc16d47ad83e44b47d59ed,
-        type: 2}
-      propertyPath: planet
-      value: 
-      objectReference: {fileID: 979317405}
-    - target: {fileID: 114573598571150950, guid: 27765a2806fc16d47ad83e44b47d59ed,
-        type: 2}
-      propertyPath: meshMat
-      value: 
-      objectReference: {fileID: 2100000, guid: 097b51d400f87c24193f3686d4e2478f, type: 2}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: 27765a2806fc16d47ad83e44b47d59ed, type: 2}
   m_IsPrefabParent: 0
@@ -260,7 +255,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mat: {fileID: 2100000, guid: f720fa7552efe2d4f951aa61e8e11eba, type: 2}
   testMat: {fileID: 2100000, guid: d9b480fafe34bfd4d969afd8d8636f5c, type: 2}
-  squareSplitLevels: []
+  splitLevels: []
   cam: {fileID: 0}
   player: {fileID: 0}
   atmosphereRadius: 16000
@@ -452,7 +447,7 @@ Light:
     m_Resolution: -1
     m_CustomResolution: -1
     m_Strength: 1
-    m_Bias: 0.1
+    m_Bias: 0.2
     m_NormalBias: 0.4
     m_NearPlane: 0.2
   m_Cookie: {fileID: 0}

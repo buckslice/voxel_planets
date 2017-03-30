@@ -1120,7 +1120,7 @@ MonoBehaviour:
   terrainLayer:
     serializedVersion: 2
     m_Bits: 512
-  meshMat: {fileID: 2100000, guid: 150603c95ae82bb4a9364677de3f13c1, type: 2}
+  meshMat: {fileID: 2100000, guid: 097b51d400f87c24193f3686d4e2478f, type: 2}
   drawer: {fileID: 0}
   flashLight: {fileID: 108470293376592986}
 --- !u!136 &136000013826653796
@@ -1143,7 +1143,7 @@ SkinnedMeshRenderer:
   m_PrefabInternal: {fileID: 100100000}
   m_GameObject: {fileID: 1905017275733768}
   m_Enabled: 1
-  m_CastShadows: 1
+  m_CastShadows: 2
   m_ReceiveShadows: 1
   m_MotionVectors: 1
   m_LightProbeUsage: 1

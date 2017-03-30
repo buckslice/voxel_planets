@@ -5,7 +5,7 @@ public class CelestialBody : MonoBehaviour {
 
     public Material mat;
     public Material testMat;
-    public float[] squareSplitLevels;
+    public float[] splitLevels;
     public Transform cam;
     public Transform player;
     //public float surfaceRadius = 500.0f;    // need to actually set these based off generation
@@ -14,7 +14,7 @@ public class CelestialBody : MonoBehaviour {
 
     public Octree root = null;
 
-    const float maxDepthDist = 10000.0f;
+    const float maxDepthDist = 50.0f;  // aka nodes should be maximally split within 100 units of player
 
 #if true
     // Use this for initialization
@@ -22,11 +22,12 @@ public class CelestialBody : MonoBehaviour {
         root = new Octree(this, null, Vector3.zero, 0, 0);
         root.BuildGameObject(root.GenerateMesh(true));
 
-        squareSplitLevels = new float[Octree.MAX_DEPTH + 1];
-        int len = squareSplitLevels.Length;
-        squareSplitLevels[len - 1] = maxDepthDist;
+        splitLevels = new float[Octree.MAX_DEPTH + 1];
+        int len = splitLevels.Length;
+        splitLevels[len - 1] = maxDepthDist;
         for (int i = len - 2; i >= 0; --i) {
-            squareSplitLevels[i] = squareSplitLevels[i + 1] * 3.0f;
+            //splitLevels[i] = splitLevels[i + 1] * 1.74f;
+            splitLevels[i] = splitLevels[i + 1] * 2.0f;
         }
 
         // old way of calculating squaresplit levels

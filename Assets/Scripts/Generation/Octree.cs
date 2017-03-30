@@ -40,11 +40,13 @@ public class Octree {
 
     public const float colliderGenDistance = 50.0f;
     public const float fadeRate = 1.0f; // 0.5f would be half of normal time, so 2 seconds
-    float morphProg = 0.0f;   // "percent morphed" 0 at morph start, 1 when morph is finished
 
+    public float timeSinceCreation = 0.0f;
+    const float timeFullyCreated = 1.0f;
 
     public Octree(CelestialBody body, Octree parent, Vector3 center, int depth, int branch) {
         this.body = body;
+        this.parent = parent;
         this.depth = depth;
         this.branch = branch;
 
@@ -145,7 +147,7 @@ public class Octree {
 
     public void Update() {
         if (hasChildren) {
-            GeoMorphInternal();
+            //GeoMorphInternal();
             if (ShouldMerge()) {
                 Merge();
             } else {
@@ -157,7 +159,7 @@ public class Octree {
             splitting = true;
             SplitManager.AddToSplitList(this);
         } else {
-            GeoMorphLeaf();
+            //GeoMorphLeaf();
             // if at max depth, have valid mesh, and close to cam then should have a collider
             if (depth == MAX_DEPTH && obj.mf.sharedMesh && GetSqrDistToCamFromCenter() < colliderGenDistance * colliderGenDistance) {
                 if (col == null) {     // if collider is null then spawn one
@@ -172,58 +174,72 @@ public class Octree {
             }
 
         }
+
+        SetGeomorph();
     }
 
     // 0 -> 0.5 fade children in
     // 0.5 -> 1.0 fade parent out
     // should be based on bands like old spacegame
     // so can be stopped at half morph if on border. then do morphing in both directions
-    void GeoMorphInternal() {
-        if (morphProg < 1.0f) {
-            morphProg += Time.deltaTime * fadeRate;
-            if (morphProg >= 1.0f) {
-                obj.mr.enabled = false;
-            } else if (morphProg >= 0.5f) {
-                obj.SetTransparency((1.0f - morphProg) * 2.0f);
-                // todo set cast shadow strength here as well!
-                // not sure if this is even a thing actually
-            }
-        }
-    }
+    //void GeoMorphInternal() {
+    //    if (morphProg < 1.0f) {
+    //        morphProg += Time.deltaTime * fadeRate;
+    //        if (morphProg >= 1.0f) {
+    //            obj.mr.enabled = false;
+    //        } else if (morphProg >= 0.5f) {
+    //            obj.SetTransparency((1.0f - morphProg) * 2.0f);
+    //            // todo set cast shadow strength here as well!
+    //            // not sure if this is even a thing actually
+    //        }
+    //    }
+    //}
 
-    void GeoMorphLeaf() {
-        if (morphProg < 0.5f) {
-            morphProg += Time.deltaTime * fadeRate;
-            if (morphProg >= 0.5f) {
-                obj.SetTransparency(1.0f);
-                morphProg = 1.01f;
-            } else {
-                obj.SetTransparency(morphProg * 2.0f);
-            }
-        }
-    }
+    //void GeoMorphLeaf() {
+    //    if (morphProg < 0.5f) {
+    //        morphProg += Time.deltaTime * fadeRate;
+    //        if (morphProg >= 0.5f) {
+    //            obj.SetTransparency(1.0f);
+    //            morphProg = 1.01f;
+    //        } else {
+    //            obj.SetTransparency(morphProg * 2.0f);
+    //        }
+    //    }
+    //}
 
+    // trying to make into one function...
     void SetGeomorph() {
-        if(parent == null) {
-            return;
+        timeSinceCreation += Time.deltaTime;
+
+        if (hasChildren) {
+            float dist = (body.player.position - area.center).magnitude;
+            float level = body.splitLevels[depth];    // my depth
+            float band = level * 0.1f;
+
+            float t = timeSinceCreation / timeFullyCreated;
+            t = Mathf.Clamp01(2.0f - 2.0f * t);
+            obj.mr.enabled = t > 0.0f;
+            obj.SetTransparency(t);
+
+        } else {
+            if(parent == null) {
+                Debug.Assert(depth == 0);
+                obj.SetTransparency(1.0f);
+                return;
+            }
+
+            float dist = (body.player.position - parent.area.center).magnitude;
+            float level = body.splitLevels[depth - 1];    // level at parents depth
+            float band = level * 0.1f;
+
+            float t = timeSinceCreation / timeFullyCreated;
+            t = Mathf.Clamp01(2.0f * t);
+            obj.SetTransparency(t);
         }
 
-        float mergeDist = DistToMerge();
         // finish this. based on old space game code
-        // prob just do this only for leafs because parent will be morph 1 whole time
-        // then once leafs are 1 parent just morphs out? im talking bout distance stalling (sorry this makes no sense prob im tired)
         //float mergeOnRec = 30f * Mathf.Pow(2, relativeRec);
         //morphFactor = Mathf.Min((Time.time - timeAtCreation) / timeFullyCreated, Mathf.Min(mergeDist / mergeOnRec, 1f));
-    }
-
-    float DistToMerge() {
-        if (depth == 0) {
-            return -1.0f;
-        }
-        float dist = (body.player.position - parent.area.center).magnitude;
-        float level = body.squareSplitLevels[depth - 1];  // parents depth
-        float val = level - dist;
-        return val < 0.0f ? 0.0f : val;
     }
 
     public Task<SplitData> SplitAsync() {
@@ -238,7 +254,6 @@ public class Octree {
                 children[i] = child;
             }
 
-
             return data;
         }, TaskCreationOptions.None);
     }
@@ -249,18 +264,17 @@ public class Octree {
             return;
         }
 
-        float curTime = Time.time;
+        //float curTime = Time.time;
         for (int i = 0; i < 8; ++i) {
             Octree c = children[i];
             c.BuildGameObject(data[i]);
             c.obj.go.transform.parent = obj.go.transform;
             c.obj.SetTransparency(0.0f);
         }
-        obj.SetTransparency(1.0f);
-        morphProg = 0.0f;   // now used fade yourself out
         obj.mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-
-        //SetChildNeighbors();
+        obj.SetTransparency(1.0f);
+        timeSinceCreation = 0.0f;   // now used to fade yourself out
+        
         if (depth > 0) {
             obj.ov.shouldDraw = false;
         }
@@ -278,15 +292,17 @@ public class Octree {
     }
 
     public bool ShouldSplit() {
-        return CanSplit() && GetSqrDistToCamFromCenter() < body.squareSplitLevels[depth];
+        float level = body.splitLevels[depth];
+        return CanSplit() && GetSqrDistToCamFromCenter() < level * level;
     }
 
     bool CanSplit() {
-        return depth < MAX_DEPTH && !dying && morphProg >= 1.0f;
+        return depth < MAX_DEPTH && !dying && timeSinceCreation >= timeFullyCreated;
     }
 
     bool ShouldMerge() {
-        return CanMerge() && GetSqrDistToCamFromCenter() > body.squareSplitLevels[depth];
+        float level = body.splitLevels[depth];
+        return CanMerge() && GetSqrDistToCamFromCenter() > level * level;
     }
 
     bool CanMerge() {
@@ -309,8 +325,6 @@ public class Octree {
         hasChildren = false;
         obj.mr.enabled = true;
         obj.mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
-        morphProg = 1.0f;
-        obj.SetTransparency(morphProg);
         if (obj.mf.mesh.vertexCount > 0) {
             obj.ov.shouldDraw = true;
         }

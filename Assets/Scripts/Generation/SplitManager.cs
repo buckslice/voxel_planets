@@ -117,11 +117,7 @@ public class SplitManager : MonoBehaviour {
     }
 
     public static void ReturnObject(ChunkObject obj) {
-        obj.mr.enabled = true;
-        obj.ov.shouldDraw = false;
-        obj.go.SetActive(false);
-        obj.go.transform.parent = tform;
-
+        obj.Reset(tform);
         freeObjects.Push(obj);
     }
 
@@ -140,6 +136,7 @@ public class ChunkObject {
     public MeshFilter mf;
     public OctreeViewer ov;
     public MaterialPropertyBlock mpb;
+    float lastTrans = -1.0f;
 
     public ChunkObject() {
         go = new GameObject("Chunk");
@@ -150,9 +147,26 @@ public class ChunkObject {
         mpb = new MaterialPropertyBlock();
     }
 
+    // resets components back to default values
+    public void Reset(Transform parent) {
+        mr.enabled = true;
+        ov.shouldDraw = false;
+        go.SetActive(false);
+        go.transform.parent = parent;
+        lastTrans = -1.0f;
+    }
+
     public void SetTransparency(float t) {
+        Debug.Assert(t >= 0.0f && t <= 1.0f);
+        if (t < 0.0f || t > 1.0f) {
+            Debug.Log(t);
+        }
+        if(t == lastTrans) {
+            return; // i have a feeling setting a property block has a decent cost (so only do when changes)
+        }
         mpb.SetFloat("_Transparency", t);
         mr.SetPropertyBlock(mpb);
+        lastTrans = t;
     }
 }
 
