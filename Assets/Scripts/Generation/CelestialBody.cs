@@ -7,14 +7,15 @@ public class CelestialBody : MonoBehaviour {
     public Material testMat;
     public float[] splitLevels;
     public Transform cam;
-    public Transform player;
+    Transform playerTransform;
+    public Vector3 player;
     //public float surfaceRadius = 500.0f;    // need to actually set these based off generation
     public float atmosphereRadius = 1000.0f;
     public float gravityRadius = 1500.0f;
 
     public Octree root = null;
 
-    const float maxDepthDist = 50.0f;  // aka nodes should be maximally split within 100 units of player
+    const float maxDepthDist = 100.0f;  // aka nodes should be maximally split within 100 units of player
 
 #if true
     // Use this for initialization
@@ -26,8 +27,8 @@ public class CelestialBody : MonoBehaviour {
         int len = splitLevels.Length;
         splitLevels[len - 1] = maxDepthDist;
         for (int i = len - 2; i >= 0; --i) {
-            //splitLevels[i] = splitLevels[i + 1] * 1.74f;
-            splitLevels[i] = splitLevels[i + 1] * 2.0f;
+            splitLevels[i] = splitLevels[i + 1] * 1.74f;
+            //splitLevels[i] = splitLevels[i + 1] * 2.0f;
         }
 
         // old way of calculating squaresplit levels
@@ -37,14 +38,15 @@ public class CelestialBody : MonoBehaviour {
         //}
 
         cam = Camera.main.transform;
-        player = GameObject.Find("Player").transform;
+        playerTransform = GameObject.Find("Player").transform;
     }
 
     float invalidCheckTimer = 0.0f;
-    // Update is called once per frame
-    void Update() { 
+    void Update() {
+        // cache player position this frame because like a billion things reference
+        // this and the cost of transform.getposition adds up
+        player = playerTransform.position;
         root.Update();
-
         invalidCheckTimer -= Time.deltaTime;
         if (invalidCheckTimer < 0.0f) {
             if (!root.IsTreeValid()) {

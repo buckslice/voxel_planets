@@ -10,7 +10,7 @@ public class VoxelMining : MonoBehaviour {
     public LayerMask terrainLayer;
 
     public Material meshMat;
-    public DrawBounds drawer;
+    public DrawBounds boundsDrawer;
     public Light flashLight;
 
     Camera cam;
@@ -18,7 +18,7 @@ public class VoxelMining : MonoBehaviour {
 
     // Use this for initialization
     void Start() {
-        drawer.enabled = false;
+        boundsDrawer.enabled = false;
         flashLight.enabled = false;
 
         cam = Camera.main;
@@ -39,31 +39,34 @@ public class VoxelMining : MonoBehaviour {
                 visualizer.gameObject.SetActive(true);
                 visualizer.transform.position = hit.point;
 
-                Octree tree = planet.root.FindOctree(hit.point);
+                //Octree tree = planet.root.FindOctree(hit.point);
 
-                if (tree != null && tree.IsMaxDepth()) {
-                    tree.EditVoxels(hit.point, leftClick);
-                }
+                //if (tree != null && tree.IsMaxDepth()) {
+                //    tree.EditVoxels(hit.point, leftClick);
+                //}
+
+                Bounds b = new Bounds(hit.point, Vector3.one * 2.0f * Octree.BASE_VOXEL_SIZE);
+                planet.root.EditVoxels(b, leftClick ? 2.0f : -2.0f);
             }
 
         } else {
             visualizer.gameObject.SetActive(false);
         }
 
-        if (Input.GetKeyDown(KeyCode.F2)) {
-            drawer.enabled = !drawer.enabled;
-        }
 
         if (Input.GetKeyDown(KeyCode.U)) {
             flashLight.enabled = !flashLight.enabled;
         }
 
-
-        if (drawer.enabled) {
+        if (Input.GetKeyDown(KeyCode.F2)) {
+            boundsDrawer.enabled = !boundsDrawer.enabled;
+        }
+        if (boundsDrawer.enabled) {
             Octree tree = planet.root.FindOctree(transform.position);
             if (tree != null) {
-                drawer.SetBounds(tree.area);
-
+                // draw chunk boundaries
+                boundsDrawer.SetBounds(tree.area);
+                // draw chunk mesh wireframe
                 Graphics.DrawMesh(tree.GetMesh(), tree.obj.go.transform.position, Quaternion.identity, meshMat, 0);
             }
         }

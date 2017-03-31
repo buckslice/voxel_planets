@@ -1,9 +1,11 @@
 ﻿
-#define SMOOTH_SHADING
+//#define SMOOTH_SHADING
+
+#define GEOMORPHING
+
 
 using UnityEngine;
 using System.Threading.Tasks;
-
 
 public class Octree {
 
@@ -11,7 +13,7 @@ public class Octree {
     // start game and pause right at beginning to see layout better
     public Octree[] children;   // would be cool to have all octree stored in same array somehow, or custom memory management like in dtb pools
     // front left back right up down
-    public Octree[] neighbors = new Octree[6];
+    //public Octree[] neighbors = new Octree[6];
     public Octree parent;
 
     public bool hasChildren = false;
@@ -29,6 +31,7 @@ public class Octree {
 
     public const int SIZE = 16;        // number of voxel cells in octree
     public const int MAX_DEPTH = 10;     // max depth meshes can split to
+    public const float BASE_VOXEL_SIZE = 2.0f;  // highest depth has 2x2x2 meter voxels
     public readonly float voxelSize;   // size of each voxel for this tree (in meters)
 
     public Bounds area; // bounding box for area this tree represents
@@ -41,8 +44,9 @@ public class Octree {
     public const float colliderGenDistance = 50.0f;
     public const float fadeRate = 1.0f; // 0.5f would be half of normal time, so 2 seconds
 
-    public float timeSinceCreation = 0.0f;
-    const float timeFullyCreated = 1.0f;
+    float timeSinceCreation = 0.0f;
+    const float timeFullyCreated = 0.5f;
+    const float blendRange = 0.05f; // percent of each split level that is geoblended
 
     public Octree(CelestialBody body, Octree parent, Vector3 center, int depth, int branch) {
         this.body = body;
@@ -50,9 +54,9 @@ public class Octree {
         this.depth = depth;
         this.branch = branch;
 
+        voxelSize = Mathf.Pow(2, (MAX_DEPTH - depth)) * BASE_VOXEL_SIZE;
         // *2 at end makes so highest depth has 2x2x2 meter voxels
-        voxelSize = Mathf.Pow(2, (MAX_DEPTH - depth)) * 2.0f;
-        // voxel are 2m^3 at max depth
+        // so voxels are 2m^3 at max depth
         // then 4, 8, 16, etc
 
 #if (SMOOTH_SHADING)
@@ -127,20 +131,13 @@ public class Octree {
         obj.go.transform.parent = body.transform;
         obj.go.transform.localPosition = pos;
 
+        obj.mr.material = body.mat; // incase terrain is edited after
         if (mesh == null) {
             obj.ov.shouldDraw = false;
-            return;
-        }
-        obj.ov.shouldDraw = true;
-
-        obj.mr.material = body.mat;
-        obj.mf.mesh = mesh;
-
-        if (depth == 0) {
-            //Debug.Log("Called");
-            obj.ov.init(depth, branch, area, Color.blue);
         } else {
-            obj.ov.init(depth, branch, area, Color.red);
+            obj.ov.shouldDraw = true;
+            obj.mf.mesh = mesh;
+            obj.ov.init(depth, branch, area, depth == 0 ? Color.blue : Color.red);
         }
 
     }
@@ -207,39 +204,42 @@ public class Octree {
     //    }
     //}
 
-    // trying to make into one function...
+    // one function now
+    // could split back into two like before for #efficiency but probly not worth
+    // when morphing, first fade in children then fade out parent
+    // if timeFullyCreated is 1 then children fade in from 0-0.5, parent fades out from 0.5-1
     void SetGeomorph() {
         timeSinceCreation += Time.deltaTime;
+        float t = timeSinceCreation / timeFullyCreated;
 
-        if (hasChildren) {
-            float dist = (body.player.position - area.center).magnitude;
+        if (hasChildren) {  // internal node
+            float dist = (body.player - area.center).magnitude;
             float level = body.splitLevels[depth];    // my depth
-            float band = level * 0.1f;
+            float absDist = Mathf.Abs(dist - level);
+            float blendBand = level * blendRange;
 
-            float t = timeSinceCreation / timeFullyCreated;
+            t = Mathf.Min(t, Mathf.Min(absDist / blendBand, 1.0f));
             t = Mathf.Clamp01(2.0f - 2.0f * t);
             obj.mr.enabled = t > 0.0f;
-            obj.SetTransparency(t);
 
-        } else {
-            if(parent == null) {
+        } else {    // leaf node
+            if (parent == null) {
                 Debug.Assert(depth == 0);
                 obj.SetTransparency(1.0f);
                 return;
             }
 
-            float dist = (body.player.position - parent.area.center).magnitude;
+            float dist = (body.player - parent.area.center).magnitude;
             float level = body.splitLevels[depth - 1];    // level at parents depth
-            float band = level * 0.1f;
+            float absDist = Mathf.Abs(dist - level);
+            float blendBand = level * blendRange;
 
-            float t = timeSinceCreation / timeFullyCreated;
+            t = Mathf.Min(t, Mathf.Min(absDist / blendBand, 1.0f));
             t = Mathf.Clamp01(2.0f * t);
-            obj.SetTransparency(t);
         }
 
-        // finish this. based on old space game code
-        //float mergeOnRec = 30f * Mathf.Pow(2, relativeRec);
-        //morphFactor = Mathf.Min((Time.time - timeAtCreation) / timeFullyCreated, Mathf.Min(mergeDist / mergeOnRec, 1f));
+        obj.SetTransparency(t);
+
     }
 
     public Task<SplitData> SplitAsync() {
@@ -264,31 +264,30 @@ public class Octree {
             return;
         }
 
-        //float curTime = Time.time;
         for (int i = 0; i < 8; ++i) {
             Octree c = children[i];
             c.BuildGameObject(data[i]);
             c.obj.go.transform.parent = obj.go.transform;
-            c.obj.SetTransparency(0.0f);
+            c.SetGeomorph();
         }
         obj.mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        obj.SetTransparency(1.0f);
-        timeSinceCreation = 0.0f;   // now used to fade yourself out
-        
         if (depth > 0) {
             obj.ov.shouldDraw = false;
         }
         hasChildren = true;
+
+        timeSinceCreation = 0.0f;   // now used to fade yourself out
+        SetGeomorph();
     }
 
     public float GetSqrDistToCamFromArea() {
         //return area.SqrDistance(body.cam.position);
-        return area.SqrDistance(body.player.position);
+        return area.SqrDistance(body.player);
     }
 
     public float GetSqrDistToCamFromCenter() {
         //return (body.cam.position - area.center).sqrMagnitude;
-        return (body.player.position - area.center).sqrMagnitude;
+        return (body.player - area.center).sqrMagnitude;
     }
 
     public bool ShouldSplit() {
@@ -325,7 +324,7 @@ public class Octree {
         hasChildren = false;
         obj.mr.enabled = true;
         obj.mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
-        if (obj.mf.mesh.vertexCount > 0) {
+        if (obj.mf.mesh.vertexCount > 0) {  // only draw gizmo if this chunk has a mesh
             obj.ov.shouldDraw = true;
         }
     }
@@ -392,37 +391,40 @@ public class Octree {
         return obj.mf.mesh;
     }
 
-    // given point in worldspace edit this octrees voxels
-    // point may be outside area so check for that
-    // need to generalize for edit to get passed to tree root and 
-    // passed down to all valid leafs it hits and edit them
-    // also to work with different shapes and sizes of edits
-    public void EditVoxels(Vector3 point, bool add) {
-        // find local world offset
-        Vector3 local = point - obj.go.transform.position;
+    // should only be called from root (maybe make RootOctree subclass of octree with these methods in it)
+    public void EditVoxels(Bounds b, float delta) {
+        if (!area.Intersects(b)) {
+            return;
+        }
 
-        int x = (int)(local.x / voxelSize);
-        int y = (int)(local.y / voxelSize);
-        int z = (int)(local.z / voxelSize);
+        if (hasChildren) {
+            for (int i = 0; i < 8; ++i) {
+                children[i].EditVoxels(b, delta);
+            }
+        } else {
+            Vector3 c = (b.center - (area.center - area.extents)) / voxelSize;   // local center
+            Vector3 e = b.extents / voxelSize;
 
-        // sbyte range [-128, 127]
+            int x0 = Mathf.Clamp((int)(c.x - (e.x - 1.0f)), 0, SIZE);
+            int y0 = Mathf.Clamp((int)(c.y - (e.y - 1.0f)), 0, SIZE);
+            int z0 = Mathf.Clamp((int)(c.z - (e.z - 1.0f)), 0, SIZE);
+            int x1 = Mathf.Clamp((int)(c.x + e.x), 0, SIZE);
+            int y1 = Mathf.Clamp((int)(c.y + e.y), 0, SIZE);
+            int z1 = Mathf.Clamp((int)(c.z + e.z), 0, SIZE);
 
-        int a = add ? -1 : 1;
-        a *= 2;
-        voxels[x, y, z] = (sbyte)Mathf.Clamp(voxels[x, y, z] + a, -128, 127);
-        voxels[x + 1, y, z] = (sbyte)Mathf.Clamp(voxels[x + 1, y, z] + a, -128, 127);
-        voxels[x, y + 1, z] = (sbyte)Mathf.Clamp(voxels[x, y + 1, z] + a, -128, 127);
-        voxels[x + 1, y + 1, z] = (sbyte)Mathf.Clamp(voxels[x + 1, y + 1, z] + a, -128, 127);
-        voxels[x, y, z + 1] = (sbyte)Mathf.Clamp(voxels[x, y, z + 1] + a, -128, 127);
-        voxels[x + 1, y, z + 1] = (sbyte)Mathf.Clamp(voxels[x + 1, y, z + 1] + a, -128, 127);
-        voxels[x, y + 1, z + 1] = (sbyte)Mathf.Clamp(voxels[x, y + 1, z + 1] + a, -128, 127);
-        voxels[x + 1, y + 1, z + 1] = (sbyte)Mathf.Clamp(voxels[x + 1, y + 1, z + 1] + a, -128, 127);
-
-
-        // rebuild mesh immediately
-        Mesh mesh = GenerateMesh(false).CreateMesh();
-        obj.mf.mesh = mesh;
-        col.mc.sharedMesh = obj.mf.sharedMesh;
+            for (int x = x0; x <= x1; ++x) {
+                for (int y = y0; y <= y1; ++y) {
+                    for (int z = z0; z <= z1; ++z) {
+                        voxels[x, y, z] = (sbyte)Mathf.Clamp(voxels[x, y, z] + delta, -128, 127);
+                    }
+                }
+            }
+            // rebuild mesh immediately
+            obj.mf.mesh = GenerateMesh(false).CreateMesh();
+            if (col != null) { 
+                col.mc.sharedMesh = obj.mf.sharedMesh;
+            }
+        }
     }
 
     public static Vector3[] childOffsets = {

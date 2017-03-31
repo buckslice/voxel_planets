@@ -79,18 +79,16 @@ public class Density  {
         float rad = 14000.0f;
         Vector3 wp = worldPos;
         wp.y -= rad;
-
-       
         //float qx = Noise.Fractal3(wp, new Vector3(0.0f, 0.0f, 0.0f), 3, 0.01f);
         //float qy = Noise.Fractal3(wp, new Vector3(5.2f, 1.3f, -2.0f), 3, 0.01f);
         //float qz = Noise.Fractal3(wp, new Vector3(1.5f, 2.7f, 3.7f), 3, 0.01f);
         //wp = wp + 20.0f * new Vector3(qx, qy, qz);
 
         float planet = (wp - new Vector3(0, -rad, 0)).magnitude - rad;
-        //planet += Noise.Fractal3(wp, Vector3.one * 1000.0f, 5, 0.0005f, 0.5f, 2f) * 30.0f;
         planet += Noise.Fractal3(wp, Vector3.one * 1000.0f, 8, 0.001f, 0.5f, 2f) * 100.0f;
         d = planet;
 
+        //d = Sphere(worldPos, Vector3.zero, 14000.0f);
 
         //-----------------------------------------
 
