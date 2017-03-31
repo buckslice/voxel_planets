@@ -45,7 +45,7 @@ public class Octree {
     public const float fadeRate = 1.0f; // 0.5f would be half of normal time, so 2 seconds
 
     float timeSinceCreation = 0.0f;
-    const float timeFullyCreated = 0.5f;
+    const float timeFullyCreated = 1.0f;
     const float blendRange = 0.05f; // percent of each split level that is geoblended
 
     public Octree(CelestialBody body, Octree parent, Vector3 center, int depth, int branch) {
@@ -129,7 +129,8 @@ public class Octree {
 
 
         obj.go.transform.parent = body.transform;
-        obj.go.transform.localPosition = pos;
+        //obj.go.transform.localPosition = pos;
+        obj.go.transform.position = pos;
 
         obj.mr.material = body.mat; // incase terrain is edited after
         if (mesh == null) {
@@ -174,35 +175,6 @@ public class Octree {
 
         SetGeomorph();
     }
-
-    // 0 -> 0.5 fade children in
-    // 0.5 -> 1.0 fade parent out
-    // should be based on bands like old spacegame
-    // so can be stopped at half morph if on border. then do morphing in both directions
-    //void GeoMorphInternal() {
-    //    if (morphProg < 1.0f) {
-    //        morphProg += Time.deltaTime * fadeRate;
-    //        if (morphProg >= 1.0f) {
-    //            obj.mr.enabled = false;
-    //        } else if (morphProg >= 0.5f) {
-    //            obj.SetTransparency((1.0f - morphProg) * 2.0f);
-    //            // todo set cast shadow strength here as well!
-    //            // not sure if this is even a thing actually
-    //        }
-    //    }
-    //}
-
-    //void GeoMorphLeaf() {
-    //    if (morphProg < 0.5f) {
-    //        morphProg += Time.deltaTime * fadeRate;
-    //        if (morphProg >= 0.5f) {
-    //            obj.SetTransparency(1.0f);
-    //            morphProg = 1.01f;
-    //        } else {
-    //            obj.SetTransparency(morphProg * 2.0f);
-    //        }
-    //    }
-    //}
 
     // one function now
     // could split back into two like before for #efficiency but probly not worth
@@ -323,6 +295,8 @@ public class Octree {
         }
         hasChildren = false;
         obj.mr.enabled = true;
+        timeSinceCreation = timeFullyCreated;
+        SetGeomorph();
         obj.mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
         if (obj.mf.mesh.vertexCount > 0) {  // only draw gizmo if this chunk has a mesh
             obj.ov.shouldDraw = true;

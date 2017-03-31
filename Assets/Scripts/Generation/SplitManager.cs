@@ -1,12 +1,11 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine.UI;
 
 public class SplitManager : MonoBehaviour {
-    [Range(1,8)]
-    public int maxConcurrentTasks = 2;
 
     // shared list between main and worker thread of octrees to split
     public static List<Octree> splitList = new List<Octree>();
@@ -19,18 +18,23 @@ public class SplitManager : MonoBehaviour {
 
     public Text splitCountText;
 
+    const int taskLaunchesPerFrame = 1;
+    int maxConcurrentTasks = 0;
+
     // Use this for initialization
     void Awake() {
-        tform = FindObjectOfType<SplitManager>().transform;
-    }
+        tform = transform;
 
-    int totalResolved = 0;
+        maxConcurrentTasks = Mathf.Max(1, Environment.ProcessorCount / 2);
+        Debug.Log("maxConcurrentTasks set: " + maxConcurrentTasks);
+    }
     
     // Update is called once per frame
     void Update() {
-        int taskLaunchesPerFrame = 1;
-        // check if there are splits to do, havent launched too many tasks this frame, and theres less than 8 tasks going
-        while(splitList.Count > 0 && taskLaunchesPerFrame > 0 && taskList.Count < 2) {
+        int newTasks = 0;
+        while(splitList.Count > 0   // while there are things to split
+           && newTasks < taskLaunchesPerFrame  // and havent launched too many tasks this frame
+           && taskList.Count < maxConcurrentTasks) { // and there are less tasks going than max
             // find octree closest to cam and split that
             int count = splitList.Count;
             int endIndex = count - 1;
@@ -55,7 +59,7 @@ public class SplitManager : MonoBehaviour {
             // one last check before queueing up task
             if (toSplit.ShouldSplit()) {
                 taskList.Add(toSplit.SplitAsync());
-                --taskLaunchesPerFrame;
+                newTasks++;
             } else {    // otherwise just remove from list
                 toSplit.splitting = false;
             }

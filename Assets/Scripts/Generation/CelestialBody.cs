@@ -6,7 +6,6 @@ public class CelestialBody : MonoBehaviour {
     public Material mat;
     public Material testMat;
     public float[] splitLevels;
-    public Transform cam;
     Transform playerTransform;
     public Vector3 player;
     //public float surfaceRadius = 500.0f;    // need to actually set these based off generation
@@ -20,16 +19,23 @@ public class CelestialBody : MonoBehaviour {
 #if true
     // Use this for initialization
     void Start() {
-        root = new Octree(this, null, Vector3.zero, 0, 0);
+        // will later need to set this in chunk material property blocks i think
+        mat.SetVector("_PlanetCenter", transform.position);
+
+        root = new Octree(this, null, transform.position, 0, 0);
         root.BuildGameObject(root.GenerateMesh(true));
 
-        splitLevels = new float[Octree.MAX_DEPTH + 1];
-        int len = splitLevels.Length;
-        splitLevels[len - 1] = maxDepthDist;
-        for (int i = len - 2; i >= 0; --i) {
-            splitLevels[i] = splitLevels[i + 1] * 1.74f;
-            //splitLevels[i] = splitLevels[i + 1] * 2.0f;
-        }
+        // doing by hand now
+        // too hard to get right witha formula to look good both on surface and
+        // from high up in space
+        Debug.Assert(splitLevels.Length == Octree.MAX_DEPTH + 1);
+        //splitLevels = new float[Octree.MAX_DEPTH + 1];
+        //int len = splitLevels.Length;
+        //splitLevels[len - 1] = maxDepthDist;
+        //for (int i = len - 2; i >= 0; --i) {
+        //    splitLevels[i] = splitLevels[i + 1] * 1.74f;
+        //    //splitLevels[i] = splitLevels[i + 1] * 2.0f;
+        //}
 
         // old way of calculating squaresplit levels
         //for (int i = 0; i < squareSplitLevels.Length; i++) {
@@ -37,7 +43,6 @@ public class CelestialBody : MonoBehaviour {
         //    squareSplitLevels[i] = level * level;
         //}
 
-        cam = Camera.main.transform;
         playerTransform = GameObject.Find("Player").transform;
     }
 
@@ -57,7 +62,7 @@ public class CelestialBody : MonoBehaviour {
     }
 #endif
 
-// example testing out the simplification post processing step of meshes
+    // example testing out the simplification post processing step of meshes
 #if false
     float[][][] voxels;
     Simplification simp;
@@ -106,8 +111,8 @@ public class CelestialBody : MonoBehaviour {
 #endif
 
 
-// simple example here
-// currently testing marching tetrahedra implementation
+    // simple example here
+    // currently testing marching tetrahedra implementation
 #if false
 
     void Start() {

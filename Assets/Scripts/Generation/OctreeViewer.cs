@@ -6,7 +6,6 @@ public class OctreeViewer : MonoBehaviour {
     public int depth;
     public int branch;
     public Bounds bounds;
-    public Vector3 center;
     private Color c;
     //private float r
     public bool shouldDraw = false;

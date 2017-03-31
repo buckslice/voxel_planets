@@ -8,8 +8,8 @@ Shader "Custom/StandardDiffuseStippleTriplanar" {
         _Glossiness("Smoothness", Range(0,1)) = 0.5
         _Metallic("Metallic", Range(0,1)) = 0.0
         _Transparency("Transparency", Range(0,1)) = 1.0
-
-        _TriplanarBlendSharpness("Blend Sharpness", Range(0.1, 32)) = 10.0
+        _TriplanarBlendSharpness("Triplanar Blend", Range(0.1, 32)) = 10.0
+        _PlanetCenter("Planet Center", Vector) = (0,0,0,1)
     }
     SubShader{
         Tags{
@@ -31,6 +31,7 @@ Shader "Custom/StandardDiffuseStippleTriplanar" {
         half _Metallic;
         half _Transparency;
         float _TriplanarBlendSharpness;
+        float4 _PlanetCenter;
 
         struct Input {
             float3 wp;
@@ -52,7 +53,7 @@ Shader "Custom/StandardDiffuseStippleTriplanar" {
             //o.wp = v.vertex;  // if change back to all meshes centered around planet (the way should prob be done
             //planets cant be rotated or move through space right now with this way
             //o.wp = normalize(v.vertex);   // looks crazy XD
-            float3 newY = normalize(o.wp);
+            float3 newY = normalize(o.wp - _PlanetCenter.xyz);  // needs to be center of planet
             // going to be a stripe line around the poles
             // caused by uvs having to stretch quickly across one triangle as soon as this if statement flips
             // this looks fine on surface but pretty bad when moving far away (should def revisit this later)
@@ -70,6 +71,12 @@ Shader "Custom/StandardDiffuseStippleTriplanar" {
                 // also do it to world pos, not sure how this works (look at sphere with debug textures)
                 o.wp = mul(transform, v.vertex);
             }
+
+            // alternate attempt which looks worse than above
+            //float3 up = normalize(o.wp - float3(0, -14000.0, 0));
+            //float3 right = normalize(cross(up, float3(0, 1, 0)));
+            //float3 forward = normalize(cross(right, up));
+            //o.norm = float3(dot(v.normal, right), dot(v.normal, up), dot(v.normal, forward));
 
         }
 

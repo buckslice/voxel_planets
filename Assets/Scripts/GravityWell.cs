@@ -40,20 +40,25 @@ public class GravityWell : MonoBehaviour {
         colliderCount = Physics.OverlapSphereNonAlloc(tform.position, cb.gravityRadius, colliders, obeysGravity.value);
         for (int i = 0; i < colliderCount; ++i) {
             Collider c = colliders[i];
-            Rigidbody rb = c.GetComponent<Rigidbody>();
-
-            if (rb && !rb.isKinematic) {
-                Vector3 g = (tform.position - c.transform.position).normalized * gravity;
-                rb.AddForce(g * rb.mass);
-
-                if (c.CompareTag(Tags.Player)) {
-                    TPRBPlanetWalker player = c.gameObject.GetComponent<TPRBPlanetWalker>();
-                    if (player && player.gravityStrength <= gravity) {
+            Rigidbody rb = null;
+            if (c.CompareTag(Tags.Player)) {
+                TPRBPlanetWalker player = c.gameObject.GetComponent<TPRBPlanetWalker>();
+                if (player) {
+                    rb = player.rigid;
+                    if (player.gravityStrength <= gravity) {
                         player.gravityStrength = gravity;
                         player.gravitySource = tform.position;
                     }
                 }
+            } else {
+                rb = c.GetComponent<Rigidbody>();
             }
+
+            if (rb && !rb.isKinematic) {
+                Vector3 g = (tform.position - c.transform.position).normalized * gravity;
+                rb.AddForce(g * rb.mass);
+            }
+
         }
 
         // parent all rigidbodies in atmosphere radius

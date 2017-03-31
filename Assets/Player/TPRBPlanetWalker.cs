@@ -49,8 +49,8 @@ public class TPRBPlanetWalker : MonoBehaviour {
     float targCamDistance;
     bool firstPerson = false;
 
-    Rigidbody myrb;
-    Transform cam;
+    public Rigidbody rigid { get; private set; }
+    public Transform cam;
     Transform tform;
 
     // get the average of the last few hit normals to undo
@@ -60,11 +60,10 @@ public class TPRBPlanetWalker : MonoBehaviour {
 
     void Start() {
         tform = transform;
-        cam = Camera.main.transform;
 
-        myrb = GetComponent<Rigidbody>();
-        myrb.freezeRotation = true;
-        myrb.useGravity = false;
+        rigid = GetComponent<Rigidbody>();
+        rigid.freezeRotation = true;
+        rigid.useGravity = false;
 
         model = tform.Find("Model");
         cam.parent = camPivot.transform;
@@ -157,19 +156,25 @@ public class TPRBPlanetWalker : MonoBehaviour {
         }
 
         Octree tree = planet.root.FindOctree(transform.position);
-        flyMode = tree == null || !tree.IsMaxDepth();
-
-        myrb.isKinematic = flyMode;
+        rigid.isKinematic = flyMode || tree == null || !tree.IsMaxDepth();
         if (flyMode) {
+            Vector3 gravDir = (gravitySource - tform.position).normalized;
+            Vector3 gravForward = Vector3.Cross(gravDir, tform.right).normalized;
             if (turnTowardsGravity) {
-                Vector3 gravDir = (gravitySource - tform.position).normalized;
-                Vector3 gravForward = Vector3.Cross(gravDir, tform.right).normalized;
                 tform.rotation = Quaternion.LookRotation(gravForward, -gravDir);
             }
 
-            // hit button to increase or decrease flight speed by log amount or something
-            //float flightSpeed = 50.0f;
-            //transform.position += gravForward * 
+            // todo: hit button to increase or decrease flight speed by log amount or something
+            float flySpeed = 100.0f;
+            if (anyInput) {
+                transform.position += gravForward * flySpeed * Time.deltaTime;
+            }
+            if (Input.GetKey(KeyCode.LeftShift)) {
+                transform.position += gravDir * flySpeed * Time.deltaTime;
+            }
+            if (Input.GetKey(KeyCode.Space)) {
+                transform.position -= gravDir * flySpeed * Time.deltaTime;
+            }
         }
 
 
@@ -180,7 +185,7 @@ public class TPRBPlanetWalker : MonoBehaviour {
 
             if (animator) {
                 // set animation speeds
-                float animSpeed = myrb.velocity.magnitude;
+                float animSpeed = rigid.velocity.magnitude;
                 // if animSpeed gets too close to one controller starts freakin
                 animSpeed = Mathf.Clamp(animSpeed, 0.1f, 10f);
                 if (!anyInput) {
@@ -188,12 +193,12 @@ public class TPRBPlanetWalker : MonoBehaviour {
                 }
                 animator.SetFloat("Speed", animSpeed);
 
-                if (myrb.isKinematic) {
+                if (rigid.isKinematic) {
                     animator.SetFloat("AirTime", 0.0f);
                     animator.SetBool("Jumping", false);
                 } else {
                     animator.SetFloat("AirTime", timeSinceGrounded);
-                    Vector3 v = tform.InverseTransformDirection(myrb.velocity);
+                    Vector3 v = tform.InverseTransformDirection(rigid.velocity);
                     animator.SetBool("Jumping", v.y > 6f);
                 }
             }
@@ -201,7 +206,7 @@ public class TPRBPlanetWalker : MonoBehaviour {
     }
 
     void FixedUpdate() {
-        if (flyMode) {  // fly mode does not use physics-based movement (ITS HAX DUDE)
+        if (rigid.isKinematic) {  // if kinematic nothing physics based will do anything
             return;
         }
 
@@ -213,9 +218,9 @@ public class TPRBPlanetWalker : MonoBehaviour {
             float rotationRate = 0.0025f * gravityStrength;
             Vector3 gravForward = Vector3.Cross(gravDir, tform.right);
             Quaternion targetRot = Quaternion.LookRotation(gravForward, -gravDir);
-            myrb.rotation = Quaternion.Lerp(myrb.rotation, targetRot, rotationRate);
-            if (Quaternion.Angle(myrb.rotation, targetRot) < 0.01) { // so wont lerp forever
-                myrb.rotation = targetRot;
+            rigid.rotation = Quaternion.Lerp(rigid.rotation, targetRot, rotationRate);
+            if (Quaternion.Angle(rigid.rotation, targetRot) < 0.01) { // so wont lerp forever
+                rigid.rotation = targetRot;
             }
         }
 
@@ -252,24 +257,24 @@ public class TPRBPlanetWalker : MonoBehaviour {
         }
 
         if (anyInput) { // calculate velocity change
-            myrb.isKinematic = false;
+            rigid.isKinematic = false;
             timeTillRest = comeToRestTime;
 
             // input is gathered in Update() so at this point player will be pointing in the direction they want to go
             // (theres no strafing currently)
             Vector3 velocityChange = tform.forward * (grounded ? 1.0f : airControl);
-            myrb.AddForce(velocityChange, ForceMode.VelocityChange);
+            rigid.AddForce(velocityChange, ForceMode.VelocityChange);
 
         }
 
         // get rigidbody velocity local to player transform
-        Vector3 v = tform.InverseTransformDirection(myrb.velocity);
+        Vector3 v = tform.InverseTransformDirection(rigid.velocity);
 
         jumpCooldown -= Time.deltaTime;
         // jump if pressed button and recently grounded
         if (timeSinceHitJump < 0.2f && timeSinceGrounded < 0.2f && jumpCooldown <= 0.0f) {
             jumping = true;
-            myrb.isKinematic = false;
+            rigid.isKinematic = false;
             timeTillRest = comeToRestTime;
             jumpCooldown = 1.0f;
             v.y = jumpSpeed;    // set current y velocity to jump
@@ -283,7 +288,7 @@ public class TPRBPlanetWalker : MonoBehaviour {
             v = new Vector3(v.x * drag, v.y, v.z * drag);
             if (timeTillRest <= 0.0f) {
                 timeTillRest = 0.0f;
-                myrb.isKinematic = true;
+                rigid.isKinematic = true;
             }
 
         }
@@ -293,7 +298,7 @@ public class TPRBPlanetWalker : MonoBehaviour {
         v = Vector3.ClampMagnitude(new Vector3(v.x, 0f, v.z), curSpeed) + new Vector3(0f, v.y, 0f);
 
         // transform back and reapply to rigidbody velocity
-        myrb.velocity = tform.TransformDirection(v);
+        rigid.velocity = tform.TransformDirection(v);
 
         // help stick to ground by projecting movement onto hit plane
         if (!jumping && lastGrounded) {
@@ -304,7 +309,7 @@ public class TPRBPlanetWalker : MonoBehaviour {
             }
             avgn /= normalCount - 1;
 
-            myrb.velocity = Vector3.ProjectOnPlane(myrb.velocity, avgn);
+            rigid.velocity = Vector3.ProjectOnPlane(rigid.velocity, avgn);
 
             if (debugRendering) {
                 Debug.DrawRay(info.point, avgn, Color.green, 10.0f);

@@ -10,15 +10,17 @@ public class VoxelMining : MonoBehaviour {
     public LayerMask terrainLayer;
 
     public Material meshMat;
-    public DrawBounds boundsDrawer;
+    DrawBounds[] boundsDrawers;
     public Light flashLight;
 
     Camera cam;
 
-
     // Use this for initialization
     void Start() {
-        boundsDrawer.enabled = false;
+        boundsDrawers = FindObjectsOfType<DrawBounds>();
+        for(int i = 0; i < boundsDrawers.Length; ++i) {
+            boundsDrawers[i].enabled = false;
+        }
         flashLight.enabled = false;
 
         cam = Camera.main;
@@ -59,13 +61,17 @@ public class VoxelMining : MonoBehaviour {
         }
 
         if (Input.GetKeyDown(KeyCode.F2)) {
-            boundsDrawer.enabled = !boundsDrawer.enabled;
+            for (int i = 0; i < boundsDrawers.Length; ++i) {
+                boundsDrawers[i].enabled = !boundsDrawers[i].enabled;
+            }
         }
-        if (boundsDrawer.enabled) {
+        if (boundsDrawers[0].enabled) {
             Octree tree = planet.root.FindOctree(transform.position);
             if (tree != null) {
                 // draw chunk boundaries
-                boundsDrawer.SetBounds(tree.area);
+                for (int i = 0; i < boundsDrawers.Length; ++i) {
+                    boundsDrawers[i].SetBounds(tree.area);
+                }
                 // draw chunk mesh wireframe
                 Graphics.DrawMesh(tree.GetMesh(), tree.obj.go.transform.position, Quaternion.identity, meshMat, 0);
             }

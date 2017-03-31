@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-public class Density  {
+public class Density {
 
     private static float Sphere(Vector3 worldPos, Vector3 origin, float radius) {
         return (worldPos - origin).magnitude - radius;
@@ -77,16 +77,21 @@ public class Density  {
 
         //warping test----------------------------
         float rad = 14000.0f;
-        Vector3 wp = worldPos;
-        wp.y -= rad;
+        //Vector3 wp = worldPos;
+        //wp.y -= rad;
         //float qx = Noise.Fractal3(wp, new Vector3(0.0f, 0.0f, 0.0f), 3, 0.01f);
         //float qy = Noise.Fractal3(wp, new Vector3(5.2f, 1.3f, -2.0f), 3, 0.01f);
         //float qz = Noise.Fractal3(wp, new Vector3(1.5f, 2.7f, 3.7f), 3, 0.01f);
         //wp = wp + 20.0f * new Vector3(qx, qy, qz);
 
-        float planet = (wp - new Vector3(0, -rad, 0)).magnitude - rad;
-        planet += Noise.Fractal3(wp, Vector3.one * 1000.0f, 8, 0.001f, 0.5f, 2f) * 100.0f;
-        d = planet;
+        //float planet = (wp - new Vector3(0, -rad, 0)).magnitude - rad;
+        //planet += Noise.Fractal3(wp, Vector3.one * 1000.0f, 8, 0.001f, 0.5f, 2f) * 100.0f;
+        //d = planet;
+
+        //worldPos.y -= rad;
+        //d = Sphere(worldPos, Vector3.zero, rad);
+        d = Sphere(worldPos, new Vector3(0, -rad, 0), rad);
+        d += Noise.Fractal3(worldPos, Vector3.one * 1000.0f, 8, 0.001f, 0.5f, 2f) * 100.0f;
 
         //d = Sphere(worldPos, Vector3.zero, 14000.0f);
 
