@@ -1,3 +1,5 @@
+// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
+
 
 #ifndef UCLA_GAMELAB_WIREFRAME
 #define UCLA_GAMELAB_WIREFRAME
@@ -33,7 +35,7 @@ sampler2D _MainTex;			// Texture used for the line
 UCLAGL_v2g UCLAGL_vert(appdata_base v)
 {
 	UCLAGL_v2g output;
-	output.pos =  mul(UNITY_MATRIX_MVP, v.vertex);
+	output.pos =  UnityObjectToClipPos(v.vertex);
 	output.uv = TRANSFORM_TEX (v.texcoord, _MainTex);//v.texcoord;
 
 	return output;

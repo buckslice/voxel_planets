@@ -45,7 +45,7 @@ public class Octree {
     public const float fadeRate = 1.0f; // 0.5f would be half of normal time, so 2 seconds
 
     float timeSinceCreation = 0.0f;
-    const float timeFullyCreated = 1.0f;
+    const float timeFullyCreated = 0.75f;
     const float blendRange = 0.05f; // percent of each split level that is geoblended
 
     public Octree(CelestialBody body, Octree parent, Vector3 center, int depth, int branch) {
@@ -80,7 +80,7 @@ public class Octree {
             voxels = WorldGenerator.CreateVoxels(SIZE + 5, depth, voxelSize, pos);
         }
         MeshData data = MarchingCubes.CalculateMeshData(voxels, voxelSize, 2, 2);
-        //data.CalculateVertexSharing();
+        data.CalculateVertexSharing();
         //Simplification simp = new Simplification(data.vertices, data.triangles);
         //data.normals = VoxelUtils.CalculateSmoothNormals(voxels, voxelSize, data.vertices);
         //data.SplitEdgesCalcSmoothness();
@@ -93,6 +93,8 @@ public class Octree {
         //if (!needsMesh) {
         //    return null;
         //}
+
+        //MeshData data = MarchingTetrahedra.CalculateMeshData(voxels, voxelSize);
 
         MeshData data = MarchingCubes.CalculateMeshData(voxels, voxelSize);
         data.CalculateNormals();
@@ -361,12 +363,9 @@ public class Octree {
     public bool IsMaxDepth() {
         return depth == MAX_DEPTH;
     }
-    public Mesh GetMesh() {
-        return obj.mf.mesh;
-    }
 
     // should only be called from root (maybe make RootOctree subclass of octree with these methods in it)
-    public void EditVoxels(Bounds b, float delta) {
+    public void EditVoxels(Bounds b, int delta) {
         if (!area.Intersects(b)) {
             return;
         }

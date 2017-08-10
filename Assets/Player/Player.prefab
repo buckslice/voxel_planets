@@ -27,7 +27,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!1 &1000011417383782
 GameObject:
   m_ObjectHideFlags: 0
@@ -185,7 +185,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!1 &1381194359481266
 GameObject:
   m_ObjectHideFlags: 1
@@ -464,7 +464,7 @@ Transform:
   m_PrefabInternal: {fileID: 100100000}
   m_GameObject: {fileID: 1000011417383782}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -7.6, y: 14099.44, z: 6.5}
+  m_LocalPosition: {x: -55, y: 80, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 4642658583038216}
@@ -687,7 +687,7 @@ Transform:
   m_PrefabInternal: {fileID: 100100000}
   m_GameObject: {fileID: 1247589104275766}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.683, z: 0.252}
+  m_LocalPosition: {x: 0, y: 0.735, z: 0.162}
   m_LocalScale: {x: 0.3791354, y: 0.29291263, z: 0.69430274}
   m_Children: []
   m_Father: {fileID: 4000013270148778}
@@ -892,6 +892,7 @@ MeshRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 0
+  m_SortingLayer: 0
   m_SortingOrder: 0
 --- !u!23 &23534448901911874
 MeshRenderer:
@@ -923,6 +924,7 @@ MeshRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 0
+  m_SortingLayer: 0
   m_SortingOrder: 0
 --- !u!33 &33000013074895706
 MeshFilter:
@@ -960,7 +962,7 @@ Animator:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 100100000}
   m_GameObject: {fileID: 1048579249600220}
-  m_Enabled: 1
+  m_Enabled: 0
   m_Avatar: {fileID: 9000000, guid: 08a659453b2eac844b4df6960b6459c0, type: 3}
   m_Controller: {fileID: 9100000, guid: 570cd0ea73e045a468bd5fa79f1e4ec8, type: 2}
   m_CullingMode: 1
@@ -977,7 +979,7 @@ Light:
   m_PrefabInternal: {fileID: 100100000}
   m_GameObject: {fileID: 1058430605285878}
   m_Enabled: 1
-  serializedVersion: 7
+  serializedVersion: 8
   m_Type: 0
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 2.58
@@ -1002,6 +1004,8 @@ Light:
   m_Lightmapping: 4
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
+  m_ColorTemperature: 6570
+  m_UseColorTemperature: 0
   m_ShadowRadius: 0
   m_ShadowAngle: 0
 --- !u!114 &114404295406382948
@@ -1032,9 +1036,11 @@ MonoBehaviour:
   turnTowardsGravity: 1
   camPivot: {fileID: 4858260285737808}
   model: {fileID: 4642658583038216}
+  skr: {fileID: 0}
   animator: {fileID: 95785434667650240}
   debugRendering: 0
   planet: {fileID: 0}
+  cam: {fileID: 0}
 --- !u!114 &114573598571150950
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -1052,7 +1058,6 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 512
   meshMat: {fileID: 2100000, guid: 097b51d400f87c24193f3686d4e2478f, type: 2}
-  boundsDrawer: {fileID: 0}
   flashLight: {fileID: 108470293376592986}
 --- !u!136 &136000013826653796
 CapsuleCollider:
@@ -1097,6 +1102,7 @@ SkinnedMeshRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 0
+  m_SortingLayer: 0
   m_SortingOrder: 0
   serializedVersion: 2
   m_Quality: 0

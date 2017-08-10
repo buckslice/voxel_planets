@@ -13,12 +13,15 @@ public class VoxelMining : MonoBehaviour {
     DrawBounds[] boundsDrawers;
     public Light flashLight;
 
+    // if you want to manually specify a certain chunk to draw the wireframe of
+    public ChunkObject forceDrawChunk = null;
+
     Camera cam;
 
     // Use this for initialization
     void Start() {
         boundsDrawers = FindObjectsOfType<DrawBounds>();
-        for(int i = 0; i < boundsDrawers.Length; ++i) {
+        for (int i = 0; i < boundsDrawers.Length; ++i) {
             boundsDrawers[i].enabled = false;
         }
         flashLight.enabled = false;
@@ -26,31 +29,31 @@ public class VoxelMining : MonoBehaviour {
         cam = Camera.main;
     }
 
+    float miningIntent = 0.0f;
+    float miningSpeed = 200.0f;
+    float miningSize = 2.0f;
+
     // Update is called once per frame
+    RaycastHit hit;
     void Update() {
-
-        // dont let player be kinematic while doing this
-        // also when at edge need to edit voxels of neighbor as well
-
+        // todo: dont let player be kinematic while doing this
         bool leftClick = Input.GetMouseButton(0);
         bool rightClick = Input.GetMouseButton(1);
         if ((leftClick || rightClick) && !(leftClick && rightClick)) {
+            if (Physics.Raycast(cam.transform.position, cam.transform.forward, out hit, 50.0f, terrainLayer.value)) {
+                // add some to mining in float value (so can be done smoothly over time)
+                miningIntent += (leftClick ? miningSpeed : -miningSpeed) * Time.deltaTime;
 
-            RaycastHit hit;
-            if (Physics.Raycast(transform.position + transform.up * 3.0f, cam.transform.forward, out hit, 50.0f, terrainLayer.value)) {
                 visualizer.gameObject.SetActive(true);
                 visualizer.transform.position = hit.point;
-
-                //Octree tree = planet.root.FindOctree(hit.point);
-
-                //if (tree != null && tree.IsMaxDepth()) {
-                //    tree.EditVoxels(hit.point, leftClick);
-                //}
-
-                Bounds b = new Bounds(hit.point, Vector3.one * 2.0f * Octree.BASE_VOXEL_SIZE);
-                planet.root.EditVoxels(b, leftClick ? 2.0f : -2.0f);
+                // once a whole integer is accrued then actually try to mine
+                if (Mathf.Abs(miningIntent) >= 1.0f) {
+                    Bounds b = new Bounds(hit.point, Vector3.one * miningSize * Octree.BASE_VOXEL_SIZE);
+                    int mineAmount = (int)miningIntent;
+                    miningIntent -= mineAmount;
+                    planet.root.EditVoxels(b, mineAmount);
+                }
             }
-
         } else {
             visualizer.gameObject.SetActive(false);
         }
@@ -66,14 +69,21 @@ public class VoxelMining : MonoBehaviour {
             }
         }
         if (boundsDrawers[0].enabled) {
-            Octree tree = planet.root.FindOctree(transform.position);
-            if (tree != null) {
-                // draw chunk boundaries
-                for (int i = 0; i < boundsDrawers.Length; ++i) {
-                    boundsDrawers[i].SetBounds(tree.area);
+            if (forceDrawChunk == null) {
+                Octree tree = null;
+                if (planet && planet.root != null) {
+                    tree = planet.root.FindOctree(transform.position);
+                    if (tree != null) {
+                        // draw chunk boundaries
+                        for (int i = 0; i < boundsDrawers.Length; ++i) {
+                            boundsDrawers[i].SetBounds(tree.area);
+                        }
+                        // draw chunk mesh wireframe
+                        Graphics.DrawMesh(tree.obj.mf.mesh, tree.obj.go.transform.position, Quaternion.identity, meshMat, 0);
+                    }
                 }
-                // draw chunk mesh wireframe
-                Graphics.DrawMesh(tree.GetMesh(), tree.obj.go.transform.position, Quaternion.identity, meshMat, 0);
+            } else {
+                Graphics.DrawMesh(forceDrawChunk.mf.mesh, forceDrawChunk.go.transform.position, Quaternion.identity, meshMat, 0);
             }
         }
 

@@ -7,17 +7,11 @@ public class DrawBounds : MonoBehaviour {
     public Material lineMat;
 
     Camera cam;
-    // Use this for initialization
+    Bounds bounds;
+
     void Start() {
         cam = GetComponent<Camera>();
     }
-
-    // Update is called once per frame
-    void Update() {
-
-    }
-
-    Bounds bounds;
 
     public void SetBounds(Bounds b) {
         bounds = b;

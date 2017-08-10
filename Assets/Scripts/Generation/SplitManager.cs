@@ -25,8 +25,10 @@ public class SplitManager : MonoBehaviour {
     void Awake() {
         tform = transform;
 
-        maxConcurrentTasks = Mathf.Max(1, Environment.ProcessorCount / 2);
-        Debug.Log("maxConcurrentTasks set: " + maxConcurrentTasks);
+        //maxConcurrentTasks = Mathf.Max(1, Environment.ProcessorCount / 2);
+        //Debug.Log("maxConcurrentTasks set: " + maxConcurrentTasks);
+
+        maxConcurrentTasks = 2;
     }
     
     // Update is called once per frame

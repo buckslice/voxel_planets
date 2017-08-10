@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using UnityEditor;
 
 public class CelestialBody : MonoBehaviour {
 
@@ -25,7 +24,7 @@ public class CelestialBody : MonoBehaviour {
         root = new Octree(this, null, transform.position, 0, 0);
         root.BuildGameObject(root.GenerateMesh(true));
 
-        // doing by hand now
+        // calculating split levels by hand now
         // too hard to get right witha formula to look good both on surface and
         // from high up in space
         Debug.Assert(splitLevels.Length == Octree.MAX_DEPTH + 1);
@@ -113,30 +112,41 @@ public class CelestialBody : MonoBehaviour {
 
     // simple example here
     // currently testing marching tetrahedra implementation
+    // make sure to switch to proper world gen procedure that is visible from 0-32m world units
 #if false
 
-    void Start() {
+    ChunkObject go;
+    ChunkObject go2;
+    VoxelMining miner;
 
+    void Start() {
+        miner = GameObject.Find("Player").GetComponent<VoxelMining>();
 
         Array3<sbyte> voxels = WorldGenerator.CreateVoxels(33, 0, 1.0f, Vector3.zero);
 
         MeshData data = MarchingCubes.CalculateMeshData(voxels, 1.0f);
-
         Mesh mesh = data.CreateMesh();
-
-        ChunkObject go = SplitManager.GetObject();
+        go = SplitManager.GetObject();
+        go.mr.enabled = false;
         go.mf.sharedMesh = mesh;
         go.mr.material = testMat;
-        //go.ov.bounds = new Bounds()
-        //go.ov.shouldDraw = true;
 
         MeshData data2 = MarchingTetrahedra.CalculateMeshData(voxels, 1.0f);
-        data2.CalculateSharedNormals();
+        //data2.CalculateSharedNormals();
         Mesh mesh2 = data2.CreateMesh();
-
-        ChunkObject go2 = SplitManager.GetObject();
+        go2 = SplitManager.GetObject();
         go2.mf.sharedMesh = mesh2;
         go2.mr.material = testMat;
+        miner.forceDrawChunk = go2;
+
+    }
+
+    void Update() {
+        if (Input.GetKeyDown(KeyCode.Q)) {
+            go.mr.enabled = !go.mr.enabled;
+            go2.mr.enabled = !go2.mr.enabled;
+            miner.forceDrawChunk = go.mr.enabled ? go : go2;
+        }
 
     }
 #endif

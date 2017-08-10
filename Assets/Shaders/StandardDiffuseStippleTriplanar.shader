@@ -20,7 +20,7 @@ Shader "Custom/StandardDiffuseStippleTriplanar" {
         CGPROGRAM
         #pragma surface surf Standard vertex:vert fullforwardshadows nolightmap
         #pragma target 3.0
-        #pragma debug
+        //#pragma debug
 
         sampler2D _Side, _Top, _Bottom;
         float4 _Side_ST;

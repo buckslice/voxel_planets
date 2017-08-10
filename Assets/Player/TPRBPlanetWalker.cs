@@ -28,6 +28,7 @@ public class TPRBPlanetWalker : MonoBehaviour {
     public bool turnTowardsGravity = true;
     public Transform camPivot; // should be child empty gameobject at eye level for camera
     public Transform model;    // should be child gameobject that is parent of all visuals for player
+    public SkinnedMeshRenderer skr;
     public Animator animator;
     public bool debugRendering = false;
     public CelestialBody planet;
@@ -66,6 +67,7 @@ public class TPRBPlanetWalker : MonoBehaviour {
         rigid.useGravity = false;
 
         model = tform.Find("Model");
+        skr = model.GetComponentInChildren<SkinnedMeshRenderer>();
         cam.parent = camPivot.transform;
 
         Cursor.lockState = CursorLockMode.Locked;
@@ -101,7 +103,9 @@ public class TPRBPlanetWalker : MonoBehaviour {
         camDistance = Mathf.Lerp(camDistance, firstPerson ? 0.0f : targCamDistance, Time.deltaTime * 5.0f);
         cam.localPosition = new Vector3(0, 0, -camDistance);
 
-        model.gameObject.SetActive(camDistance >= minDist);
+        skr.shadowCastingMode = camDistance >= minDist ?
+            UnityEngine.Rendering.ShadowCastingMode.TwoSided :
+            UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
 
         // collide camera with anything in camera collision layer
         if (!firstPerson) {
@@ -155,7 +159,11 @@ public class TPRBPlanetWalker : MonoBehaviour {
             flyMode = !flyMode;
         }
 
-        Octree tree = planet.root.FindOctree(transform.position);
+        Octree tree = null;
+        if (planet && planet.root != null) {
+            tree = planet.root.FindOctree(transform.position);
+        }
+
         rigid.isKinematic = flyMode || tree == null || !tree.IsMaxDepth();
         if (flyMode) {
             Vector3 gravDir = (gravitySource - tform.position).normalized;

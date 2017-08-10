@@ -13,10 +13,10 @@ public static class MarchingTetrahedra {
 
         int end = voxels.size - 1;
 
-        for (int x = 0; x < end; ++x) {
+        for (int z = 0; z < end; ++z) {
             for (int y = 0; y < end; ++y) {
-                for (int z = 0; z < end; ++z) {
-                    for (int i = 0; i < 8; i++) {
+                for (int x = 0; x < end; ++x) {
+                    for (int i = 0; i < 8; ++i) {
                         density[i] = voxels[
                             x + vertexOffset[i][0],
                             y + vertexOffset[i][1],
