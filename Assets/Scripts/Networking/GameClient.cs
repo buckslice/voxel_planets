@@ -2,7 +2,6 @@
 using UnityEngine.Networking;
 using System.Collections;
 using System.Collections.Generic;
-using MovementEffects;
 
 public class GameClient : MonoBehaviour {
 
@@ -37,7 +36,7 @@ public class GameClient : MonoBehaviour {
         channelReliable = config.AddChannel(QosType.ReliableSequenced);
         topology = new HostTopology(config, maxConnections);
 
-        Timing.RunCoroutine(TryConnectRoutine());
+        StartCoroutine(TryConnectRoutine());
     }
 
     private void CheckMessages() {
@@ -106,20 +105,20 @@ public class GameClient : MonoBehaviour {
     private void ReceivePacket(Packet packet) {
         PacketType pt = (PacketType)packet.ReadByte();
 
-        int id, len;
+        //int id, len;
         switch (pt) {
             case PacketType.LOGIN:
                 break;
         }
     }
 
-    private IEnumerator<float> TryConnectRoutine() {
+    private IEnumerator TryConnectRoutine() {
         while (clientSocket < 0) {
             clientSocket = NetworkTransport.AddHost(topology, port);
             if (clientSocket < 0) {
                 //timeUntilStartServer = 2.0f;
                 Debug.Log("CLIENT: port blocked: " + port);
-                yield return Timing.WaitForSeconds(1.0f);
+                yield return Yielders.Get(1.0f);
             }
         }
         byte error;

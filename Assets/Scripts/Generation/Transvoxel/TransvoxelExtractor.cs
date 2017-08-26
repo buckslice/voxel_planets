@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 
 public static class TransvoxelExtractor {
-    
 
+#if false
     public static MeshData GenLodCell(Array3<sbyte> chunk, int lod) {
 
         MeshBuilder mesh = new MeshBuilder();
@@ -180,7 +180,6 @@ public static class TransvoxelExtractor {
         return (byte)(b & 0x0F);
     }
 
-#if false
     private static void PolygonizeCell(Vector3i pos, sbyte[] density, MeshBuilder mesh, int lod) {
 
         byte directionMask = (byte)((pos.x > 0 ? 1 : 0) | ((pos.z > 0 ? 1 : 0) << 1) | ((pos.y > 0 ? 1 : 0) << 2));

@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_Name: Diffuse
+  m_Shader: {fileID: 4800000, guid: 2f1a6e4a47a2cf7439ccf35a179a2d97, type: 3}
+  m_ShaderKeywords: _AA_ON _CHANNEL_UV3 _MODE_DEFAULT _NORMALMAP _WLIGHT_OVERLAY _WSTYLE_DEFAULT
+    _WUV_UV0
+  m_LightmapFlags: 1
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: 2000
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _BumpMap:
+        m_Texture: {fileID: 2800000, guid: 819ac35df88378c449edd1feaf1da0e9, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 2800000, guid: f6432dd652572e84ab1319e7e0d9a0d2, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _WMask:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _WTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Floats:
+    - _AASmooth: 1.5
+    - _Channel: 0
+    - _Cull: 2
+    - _Cutoff: 0.5
+    - _DstBlend: 0
+    - _FDist: 0.1
+    - _FMode: 1
+    - _FPow: 5
+    - _Fade: 0
+    - _Fold: 7
+    - _GDist: 0.88
+    - _GEmission: 0
+    - _GPower: 2
+    - _Glow: 0
+    - _Limits: 1
+    - _Mode: 0
+    - _Quad: 0
+    - _SrcBlend: 1
+    - _TwoSided: 1
+    - _WEmission: 0
+    - _WInvert: 0
+    - _WLight: 1
+    - _WMode: 0
+    - _WOpacity: 1
+    - _WParam: 0
+    - _WStyle: 0
+    - _WThickness: 0.0396
+    - _WTransparency: 1
+    - _WUV: 0
+    - _ZWrite: 1
+    m_Colors:
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _GColor: {r: 0, g: 0, b: 0, a: 1}
+    - _WColor: {r: 0.8897059, g: 0.40930077, b: 0.09812932, a: 1}

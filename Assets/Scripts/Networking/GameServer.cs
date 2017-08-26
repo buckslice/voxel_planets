@@ -94,7 +94,7 @@ public class GameServer : MonoBehaviour {
 
     private void ReceivePacket(Packet packet, int clientID) {
         PacketType packetType = (PacketType)packet.ReadByte();
-        Packet retPack;   // return packet
+        //Packet retPack;   // return packet
         switch (packetType) {
             case PacketType.LOGIN:
                 break;
