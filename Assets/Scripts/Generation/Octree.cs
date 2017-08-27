@@ -394,7 +394,7 @@ public class Octree {
             }
             // rebuild mesh immediately
             obj.mf.mesh = GenerateMesh(false).CreateMesh();
-            if (col != null) { 
+            if (col != null) {
                 col.mc.sharedMesh = obj.mf.sharedMesh;
             }
         }
@@ -427,6 +427,17 @@ public class Octree {
             }
         }
         return true;
+    }
+
+    public int GetNumGameObjects(bool leafsOnly) {
+        if (hasChildren) {
+            int c = leafsOnly ? 0 : 1;
+            for (int i = 0; i < 8; ++i) {
+                c += children[i].GetNumGameObjects(leafsOnly);
+            }
+            return c;
+        }
+        return 1;
     }
 
 

@@ -57,6 +57,7 @@ public class CelestialBody : MonoBehaviour {
                 Debug.LogError("TREE INVALID DETECTED");
             }
             invalidCheckTimer = 2.0f;
+            //Debug.Log(root.GetNumGameObjects(true));
         }
     }
 #endif
