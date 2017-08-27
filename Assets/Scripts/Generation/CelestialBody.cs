@@ -15,13 +15,15 @@ public class CelestialBody : MonoBehaviour {
 
     const float maxDepthDist = 100.0f;  // aka nodes should be maximally split within 100 units of player
 
+    Vector3 rotation;
+
 #if true
     // Use this for initialization
     void Start() {
         // will later need to set this in chunk material property blocks i think
         mat.SetVector("_PlanetCenter", transform.position);
 
-        root = new Octree(this, null, transform.position, 0, 0);
+        root = new Octree(this, null, Vector3.zero, 0, 0);
         root.BuildGameObject(root.GenerateMesh(true));
 
         // calculating split levels by hand now
@@ -41,6 +43,7 @@ public class CelestialBody : MonoBehaviour {
         //    float level = Mathf.Pow(2f, Octree.MAX_DEPTH - i) * 100f; //64.0f;
         //    squareSplitLevels[i] = level * level;
         //}
+        rotation = Random.onUnitSphere; // * speed?
 
         playerTransform = GameObject.Find("Player").transform;
     }
@@ -54,10 +57,14 @@ public class CelestialBody : MonoBehaviour {
         invalidCheckTimer -= Time.deltaTime;
         if (invalidCheckTimer < 0.0f) {
             if (!root.IsTreeValid()) {
-                Debug.LogError("TREE INVALID DETECTED");
+                Debug.LogError("INVALID TREE DETECTED");
             }
             invalidCheckTimer = 2.0f;
             //Debug.Log(root.GetNumGameObjects(true));
+        }
+
+        if (Input.GetKey(KeyCode.P)) {
+            transform.Rotate(rotation * Time.deltaTime);
         }
     }
 #endif

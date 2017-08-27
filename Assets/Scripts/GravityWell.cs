@@ -80,7 +80,7 @@ public class GravityWell : MonoBehaviour {
         for (int i = 0; i < lastColliders.Count; ++i) {
             Collider c = lastColliders[i];
             Rigidbody rb = c.GetComponent<Rigidbody>();
-            if (rb && !rb.isKinematic && !contains(c, colliders)) { // should do something better once a lot of objects
+            if (rb && !rb.isKinematic && !Contained(c, colliders)) { // should do something better once a lot of objects
                 c.transform.parent = null;
                 rb.velocity += planetVelocity;
                 //Debug.Log("left atmosphere: " + Time.time);
@@ -96,7 +96,7 @@ public class GravityWell : MonoBehaviour {
         lastPos.position = tform.position;
     }
 
-    private bool contains(Collider collider, Collider[] colliders) {
+    private bool Contained(Collider collider, Collider[] colliders) {
         for (int i = 0; i < colliders.Length; i++) {
             if (collider == colliders[i]) {
                 return true;

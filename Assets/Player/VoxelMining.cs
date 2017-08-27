@@ -72,11 +72,11 @@ public class VoxelMining : MonoBehaviour {
             if (forceDrawChunk == null) {
                 Octree tree = null;
                 if (planet && planet.root != null) {
-                    tree = planet.root.FindOctree(transform.position);
+                    tree = planet.root.FindOctree(transform.localPosition);
                     if (tree != null) {
                         // draw chunk boundaries
                         for (int i = 0; i < boundsDrawers.Length; ++i) {
-                            boundsDrawers[i].SetBounds(tree.area);
+                            boundsDrawers[i].SetBounds(tree.localArea);
                         }
                         // draw chunk mesh wireframe
                         Graphics.DrawMesh(tree.obj.mf.mesh, tree.obj.go.transform.position, Quaternion.identity, meshMat, 0);

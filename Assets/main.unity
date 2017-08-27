@@ -1460,6 +1460,11 @@ Prefab:
       propertyPath: meshMat
       value: 
       objectReference: {fileID: 2100000, guid: 53b5a7b49011a684daf4062c587744ae, type: 2}
+    - target: {fileID: 114573598571150950, guid: 27765a2806fc16d47ad83e44b47d59ed,
+        type: 2}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: 27765a2806fc16d47ad83e44b47d59ed, type: 2}
   m_IsPrefabParent: 0

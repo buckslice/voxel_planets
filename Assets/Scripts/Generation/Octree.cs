@@ -22,7 +22,7 @@ public class Octree {
 
     Array3<sbyte> voxels; // need to save for vertex modification
 
-    Vector3 pos;    // position of voxel grid (denotes the corner so it gets offset to remain centered)
+    Vector3 localPos;    // position of voxel grid (denotes the corner so it gets offset to remain centered)
 
     public CelestialBody body;
 
@@ -34,7 +34,7 @@ public class Octree {
     public const float BASE_VOXEL_SIZE = 2.0f;  // highest depth has 2x2x2 meter voxels
     public readonly float voxelSize;   // size of each voxel for this tree (in meters)
 
-    public Bounds area; // bounding box for area this tree represents
+    public Bounds localArea; // bounding box for area this tree represents
     // gonna be bad.. once planets can rotate lol
     // will prob need to make own thing or have some extension that takes into account planet rotation
 
@@ -62,10 +62,10 @@ public class Octree {
 #if (SMOOTH_SHADING)
         pos = center - new Vector3(2, 2, 2) * voxelSize - Vector3.one * (SIZE / 2f) * voxelSize;
 #else
-        pos = center - Vector3.one * (SIZE / 2f) * voxelSize;
+        localPos = center - Vector3.one * (SIZE / 2f) * voxelSize;
 #endif
 
-        area = new Bounds(center, Vector3.one * voxelSize * SIZE);
+        localArea = new Bounds(center, Vector3.one * voxelSize * SIZE);
     }
 
     public MeshData GenerateMesh(bool createVoxels) {
@@ -87,7 +87,7 @@ public class Octree {
         data.CalculateSharedNormals();  // todo figure out why this doesnt make it smoothed...
 #else
         if (createVoxels) {
-            voxels = WorldGenerator.CreateVoxels(SIZE + 1, depth, voxelSize, pos);
+            voxels = WorldGenerator.CreateVoxels(SIZE + 1, depth, voxelSize, localPos);
         }
 
         //if (!needsMesh) {
@@ -131,8 +131,9 @@ public class Octree {
 
 
         obj.go.transform.parent = body.transform;
-        //obj.go.transform.localPosition = pos;
-        obj.go.transform.position = pos;
+        obj.go.transform.localPosition = localPos;
+        obj.go.transform.localRotation = Quaternion.identity;
+        //obj.go.transform.position = pos;
 
         obj.mr.material = body.mat; // incase terrain is edited after
         if (mesh == null) {
@@ -140,7 +141,7 @@ public class Octree {
         } else {
             obj.ov.shouldDraw = true;
             obj.mf.mesh = mesh;
-            obj.ov.init(depth, branch, area, depth == 0 ? Color.blue : Color.red);
+            obj.ov.init(depth, branch, localArea, body.transform, depth == 0 ? Color.blue : Color.red);
         }
 
     }
@@ -166,6 +167,7 @@ public class Octree {
                     col = SplitManager.GetCollider();
                     col.go.transform.SetParent(obj.go.transform, false);
                     col.go.transform.localPosition = Vector3.zero;
+                    col.go.transform.localRotation = Quaternion.identity;
                     col.mc.sharedMesh = obj.mf.sharedMesh;
                 }
             } else if (col != null) {   // otherwise if have collider then return it
@@ -178,6 +180,15 @@ public class Octree {
         SetGeomorph();
     }
 
+    // area is in localSpace so transform it to be in world space
+    // this is transform point basically... (except that didnt work????)
+    public static Vector3 LocalToWorld(Transform body, Vector3 localPos) {
+        return body.rotation * localPos + body.position;
+    }
+    public static Vector3 WorldToLocal(Transform body, Vector3 worldPos) {
+        return Quaternion.Inverse(body.rotation) * (worldPos - body.position);
+    }
+
     // one function now
     // could split back into two like before for #efficiency but probly not worth
     // when morphing, first fade in children then fade out parent
@@ -187,7 +198,7 @@ public class Octree {
         float t = timeSinceCreation / timeFullyCreated;
 
         if (hasChildren) {  // internal node
-            float dist = (body.player - area.center).magnitude;
+            float dist = (body.player - LocalToWorld(body.transform, localArea.center)).magnitude;
             float level = body.splitLevels[depth];    // my depth
             float absDist = Mathf.Abs(dist - level);
             float blendBand = level * blendRange;
@@ -202,8 +213,7 @@ public class Octree {
                 obj.SetTransparency(1.0f);
                 return;
             }
-
-            float dist = (body.player - parent.area.center).magnitude;
+            float dist = (body.player - LocalToWorld(body.transform, parent.localArea.center)).magnitude;
             float level = body.splitLevels[depth - 1];    // level at parents depth
             float absDist = Mathf.Abs(dist - level);
             float blendBand = level * blendRange;
@@ -222,7 +232,7 @@ public class Octree {
             children = new Octree[8];
             for (int i = 0; i < 8; i++) {
                 Vector3 coff = childOffsets[i];
-                Octree child = new Octree(body, this, area.center + coff * SIZE * voxelSize * .25f, depth + 1, i);
+                Octree child = new Octree(body, this, localArea.center + coff * SIZE * voxelSize * .25f, depth + 1, i);
 
                 data.Add(child.GenerateMesh(true));
                 children[i] = child;
@@ -254,14 +264,14 @@ public class Octree {
         SetGeomorph();
     }
 
-    public float GetSqrDistToCamFromArea() {
-        //return area.SqrDistance(body.cam.position);
-        return area.SqrDistance(body.player);
-    }
+    //public float GetSqrDistToCamFromArea() {
+    //    //return area.SqrDistance(body.cam.position);
+    //    return area.SqrDistance(body.player);
+    //}
 
     public float GetSqrDistToCamFromCenter() {
         //return (body.cam.position - area.center).sqrMagnitude;
-        return (body.player - area.center).sqrMagnitude;
+        return (body.player - LocalToWorld(body.transform, localArea.center)).sqrMagnitude;
     }
 
     public bool ShouldSplit() {
@@ -316,11 +326,11 @@ public class Octree {
         dying = true;
     }
 
-    // given point in worldspace find the smallest octree node that contains this point
+    // given point in LOCALSPACE find the smallest octree node that contains this point
     // returns null if outside the tree
     public Octree FindOctree(Vector3 point) {
-        if (depth == 0 && !area.Contains(point)) {
-            Debug.LogWarning("FindOctree called outside of root");
+        if (depth == 0 && !localArea.Contains(point)) {
+            Debug.LogWarning("FindOctree called outside of root bounds");
             return null;
         }
 
@@ -328,29 +338,29 @@ public class Octree {
             return this;
         }
 
-        if (point.y > area.center.y) {
-            if (point.z > area.center.z) {
-                if (point.x > area.center.x) {
+        if (point.y > localArea.center.y) {
+            if (point.z > localArea.center.z) {
+                if (point.x > localArea.center.x) {
                     return children[0].FindOctree(point);
                 } else {
                     return children[1].FindOctree(point);
                 }
             } else {
-                if (point.x > area.center.x) {
+                if (point.x > localArea.center.x) {
                     return children[3].FindOctree(point);
                 } else {
                     return children[2].FindOctree(point);
                 }
             }
         } else {
-            if (point.z > area.center.z) {
-                if (point.x > area.center.x) {
+            if (point.z > localArea.center.z) {
+                if (point.x > localArea.center.x) {
                     return children[4].FindOctree(point);
                 } else {
                     return children[5].FindOctree(point);
                 }
             } else {
-                if (point.x > area.center.x) {
+                if (point.x > localArea.center.x) {
                     return children[7].FindOctree(point);
                 } else {
                     return children[6].FindOctree(point);
@@ -366,7 +376,7 @@ public class Octree {
 
     // should only be called from root (maybe make RootOctree subclass of octree with these methods in it)
     public void EditVoxels(Bounds b, int delta) {
-        if (!area.Intersects(b)) {
+        if (!localArea.Intersects(b)) {
             return;
         }
 
@@ -375,7 +385,7 @@ public class Octree {
                 children[i].EditVoxels(b, delta);
             }
         } else {
-            Vector3 c = (b.center - (area.center - area.extents)) / voxelSize;   // local center
+            Vector3 c = (b.center - (localArea.center - localArea.extents)) / voxelSize;   // local center
             Vector3 e = b.extents / voxelSize;
 
             int x0 = Mathf.Clamp((int)(c.x - (e.x - 1.0f)), 0, SIZE);

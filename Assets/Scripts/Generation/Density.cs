@@ -90,7 +90,7 @@ public class Density {
 
         //worldPos.y -= rad;
         //d = Sphere(worldPos, Vector3.zero, rad);
-        d = Sphere(worldPos, new Vector3(0, -rad, 0), rad);
+        d = Sphere(worldPos, new Vector3(0, 0, 0), rad);
         d += Noise.Fractal3(worldPos, Vector3.one * 1000.0f, 8, 0.001f, 0.5f, 2f) * 100.0f;
 
         //d = Sphere(worldPos, Vector3.zero, 14000.0f);

@@ -161,10 +161,18 @@ public class TPRBPlanetWalker : MonoBehaviour {
 
         Octree tree = null;
         if (planet && planet.root != null) {
-            tree = planet.root.FindOctree(transform.position);
+            tree = planet.root.FindOctree(Octree.WorldToLocal(planet.transform, transform.position));
         }
+        //if (tree == null) {
+        //    Debug.Log("null tree");
+        //}
+        //if (!tree.IsMaxDepth()) {
+        //    Debug.Log("tree not max depth: " + tree.depth);
+        //}
 
         rigid.isKinematic = flyMode || tree == null || !tree.IsMaxDepth();
+        tree.obj.ov.color = Color.green;
+
         if (flyMode) {
             Vector3 gravDir = (gravitySource - tform.position).normalized;
             Vector3 gravForward = Vector3.Cross(gravDir, tform.right).normalized;
