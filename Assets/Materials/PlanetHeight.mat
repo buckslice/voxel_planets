@@ -6,8 +6,8 @@ Material:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
-  m_Name: Planet
-  m_Shader: {fileID: 4800000, guid: 9d13de0ebc8a66b4da1ead0caad8d95b, type: 3}
+  m_Name: PlanetHeight
+  m_Shader: {fileID: 4800000, guid: f3fd6b03d0c5ac646b6ea45ed112c423, type: 3}
   m_ShaderKeywords: _EMISSION
   m_LightmapFlags: 1
   m_EnableInstancingVariants: 0
@@ -19,7 +19,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _Bottom:
-        m_Texture: {fileID: 2800000, guid: 8fa33ca6c4ec4aa45afac0a163df6815, type: 3}
+        m_Texture: {fileID: 2800000, guid: a08960dd6e8274e7f8fca616e09c48ed, type: 3}
         m_Scale: {x: 0.1, y: 0.1}
         m_Offset: {x: 0, y: 0}
     - _BumpMap:
@@ -59,11 +59,15 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Side:
-        m_Texture: {fileID: 2800000, guid: 8fa33ca6c4ec4aa45afac0a163df6815, type: 3}
+        m_Texture: {fileID: 2800000, guid: 3805dc3747e19da4597f2f7e37c4d281, type: 3}
         m_Scale: {x: 0.1, y: 0.1}
         m_Offset: {x: 0, y: 0}
+    - _Striations:
+        m_Texture: {fileID: 2800000, guid: 495fc86e4fca9ee4297e93a8d9ac425a, type: 3}
+        m_Scale: {x: 0.01, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _Top:
-        m_Texture: {fileID: 2800000, guid: 63bc6e45823497046945bb2cec839f91, type: 3}
+        m_Texture: {fileID: 2800000, guid: 12c1f0984bba59e489983d0116048ab6, type: 3}
         m_Scale: {x: 0.3, y: 0.3}
         m_Offset: {x: 0, y: 0}
     m_Floats:

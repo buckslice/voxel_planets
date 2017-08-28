@@ -20,7 +20,8 @@ public class Octree {
     public int depth;  // 0 is root, MAX_LEVEL is depth limit
     int branch;  // which child of your parent are you
 
-    Array3<sbyte> voxels; // need to save for vertex modification
+    Array3<sbyte> voxels; // need to save for vertex modification (should prob be called density)
+    Array3<byte> blocks;
 
     Vector3 localPos;    // position of voxel grid (denotes the corner so it gets offset to remain centered)
 
@@ -31,8 +32,8 @@ public class Octree {
 
     public const int SIZE = 16;        // number of voxel cells in octree
     public const int MAX_DEPTH = 10;     // max depth meshes can split to
-    public const float BASE_VOXEL_SIZE = 2.0f;  // highest depth has 2x2x2 meter voxels
     public readonly float voxelSize;   // size of each voxel for this tree (in meters)
+    public const float BASE_VOXEL_SIZE = 2.0f;  // highest depth has 2x2x2 meter voxels
 
     public Bounds localArea; // bounding box for area this tree represents
     // gonna be bad.. once planets can rotate lol
@@ -136,12 +137,15 @@ public class Octree {
         //obj.go.transform.position = pos;
 
         obj.mr.material = body.mat; // incase terrain is edited after
+        obj.mpb.SetVector(ShaderProps.localOffset, localPos);
+        obj.UpdatePropBlock();
+        
         if (mesh == null) {
             obj.ov.shouldDraw = false;
         } else {
             obj.ov.shouldDraw = true;
             obj.mf.mesh = mesh;
-            obj.ov.init(depth, branch, localArea, body.transform, depth == 0 ? Color.blue : Color.red);
+            obj.ov.init(depth, branch, localArea, body, depth == 0 ? Color.blue : Color.red);
         }
 
     }

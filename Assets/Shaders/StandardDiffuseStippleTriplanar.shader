@@ -9,7 +9,7 @@ Shader "Custom/StandardDiffuseStippleTriplanar" {
         _Metallic("Metallic", Range(0,1)) = 0.0
         _Transparency("Transparency", Range(0,1)) = 1.0
         _TriplanarBlendSharpness("Triplanar Blend", Range(0.1, 32)) = 10.0
-        _PlanetCenter("Planet Center", Vector) = (0,0,0,1)
+        _LocalOffset("Local Offset", Vector) = (0,0,0,1)
     }
     SubShader{
         Tags{
@@ -31,10 +31,10 @@ Shader "Custom/StandardDiffuseStippleTriplanar" {
         half _Metallic;
         half _Transparency;
         float _TriplanarBlendSharpness;
-        float4 _PlanetCenter;
+        float4 _LocalOffset;
 
         struct Input {
-            float3 wp;
+            float3 wp;      // actually is local pos in relation to planet
             float3 norm;
             float4 screenPos;
         };
@@ -42,36 +42,44 @@ Shader "Custom/StandardDiffuseStippleTriplanar" {
         void vert(inout appdata_full v, out Input o) {
             UNITY_INITIALIZE_OUTPUT(Input, o);
 
-            o.wp = mul(unity_ObjectToWorld, v.vertex);
-
             // random shaderforge wiki stuff i tried (maybe should try in surf function)
             //http://acegikmo.com/shaderforge/wiki/index.php?title=File:Sf_object_space_11112015.png
             //o.wp = mul(unity_WorldToObject, float4((o.wp - v.vertex.xyz), 0)).xyz;
             //o.norm = pow(abs(mul(unity_WorldToObject, float4(v.normal, 0)).xyz), _TriplanarBlendSharpness);;
             //o.norm = o.norm / (o.norm.x + o.norm.y + o.norm.z);
 
-            //o.wp = v.vertex;  // if change back to all meshes centered around planet (the way should prob be done
-            //planets cant be rotated or move through space right now with this way
-            //o.wp = normalize(v.vertex);   // looks crazy XD
-            float3 newY = normalize(o.wp - _PlanetCenter.xyz);  // needs to be center of planet
-            // going to be a stripe line around the poles
-            // caused by uvs having to stretch quickly across one triangle as soon as this if statement flips
-            // this looks fine on surface but pretty bad when moving far away (should def revisit this later)
-            // also wont work when planets move / rotate (cant use world space, need to use local space)
-            // also bottom of planet looks wierd lol
-            if (abs(newY.y) > .999) { 
+            //o.wp = v.vertex + _LocalOffset;  // if change back to all meshes centered around planet (the way should prob be done
+
+
+
+            //// going to be a stripe line around the poles
+            //// caused by uvs having to stretch quickly across one triangle as soon as this if statement flips
+            //// this looks fine on surface but pretty bad when moving far away (should def revisit this later)
+            //// also wont work when planets move / rotate (cant use world space, need to use local space)
+            //// also bottom of planet looks wierd lol
+            // construct change of basis to rotate normal to the up vector
+
+            // choose new up vector you are least aligned with??? havent tried this should try maybe
+            // will prob have gross seams tho
+            //float3 targetY = float3(0, 1, 0);
+            //if (dot(newY, targetY) < dot(newY, float3(1, 0, 0))) {
+            //}
+
+            // TRY THIS NEXT!!!
+            //https://github.com/xoyojank/cubiquity-for-u3d-native/blob/master/cubiquity-for-unity3d/Assets/Cubiquity/Resources/Shaders/Planet.shader
+
+            // this indicates direction from center of planet to this vertex (up vector)
+            float3 newY = normalize(v.vertex + _LocalOffset);
+            if (abs(newY.y) > .999) {
                 o.norm = v.normal;
             } else {
-                // construct change of basis to rotate normal to the up vector
                 float3 newZ = normalize(cross(newY, float3(0, 1, 0)));
                 float3 newX = normalize(cross(newY, newZ));
                 float3x3 transform = float3x3(newX, newY, newZ);
                 o.norm = mul(transform, v.normal);  // apply change of basis to normal
-
-                // also do it to world pos, not sure how this works (look at sphere with debug textures)
+                // also do it to local pos, not sure how this works (look at sphere with debug textures)
                 o.wp = mul(transform, v.vertex);
             }
-
             // alternate attempt which looks worse than above
             //float3 up = normalize(o.wp - float3(0, -14000.0, 0));
             //float3 right = normalize(cross(up, float3(0, 1, 0)));

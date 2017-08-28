@@ -17,11 +17,13 @@ public class CelestialBody : MonoBehaviour {
 
     Vector3 rotation;
 
+    public Matrix4x4 currentMatrix = new Matrix4x4();
+
 #if true
     // Use this for initialization
     void Start() {
         // will later need to set this in chunk material property blocks i think
-        mat.SetVector("_PlanetCenter", transform.position);
+        //mat.SetVector("_PlanetCenter", transform.position);
 
         root = new Octree(this, null, Vector3.zero, 0, 0);
         root.BuildGameObject(root.GenerateMesh(true));
@@ -50,6 +52,8 @@ public class CelestialBody : MonoBehaviour {
 
     float invalidCheckTimer = 0.0f;
     void Update() {
+        currentMatrix = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one);
+
         // cache player position this frame because like a billion things reference
         // this and the cost of transform.getposition adds up
         player = playerTransform.position;

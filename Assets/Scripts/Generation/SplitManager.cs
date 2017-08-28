@@ -170,9 +170,13 @@ public class ChunkObject {
         if(t == lastTrans) {
             return; // i have a feeling setting a property block has a decent cost (so only do when changes)
         }
-        mpb.SetFloat("_Transparency", t);
-        mr.SetPropertyBlock(mpb);
+        mpb.SetFloat(ShaderProps.transparency, t);
+        UpdatePropBlock();
         lastTrans = t;
+    }
+
+    public void UpdatePropBlock() { // not sure if this is a good way to do this but yolo
+        mr.SetPropertyBlock(mpb);
     }
 }
 

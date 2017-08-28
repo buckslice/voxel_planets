@@ -7,6 +7,8 @@ public static class MarchingCubes {
     // start and end are used to add padding before and after basically
     public static MeshData CalculateMeshData(Array3<sbyte> voxels, float voxelSize, int start = 0, int end = 0) {
         List<Vector3> verts = new List<Vector3>();
+        //List<Color32> colors = new List<Color32>();
+
         //List<int> tris = new List<int>();
 
         // used to be static but now in here so can be multithreaded
@@ -35,7 +37,9 @@ public static class MarchingCubes {
             }
         }
 
-        return new MeshData(verts.ToArray());
+        MeshData md = new MeshData(verts.ToArray());
+        //md.colors = colors.ToArray();
+        return md;
         //return new MeshData(verts.ToArray(), tris.ToArray());
     }
 
@@ -69,7 +73,7 @@ public static class MarchingCubes {
                 edgeVertices[i].y = pos.y + (vertexOffset[edgeConnection[i, 0], 1] + offset * edgeDirection[i, 1]);
                 edgeVertices[i].z = pos.z + (vertexOffset[edgeConnection[i, 0], 2] + offset * edgeDirection[i, 2]);
 
-                edgeVertices[i] *= pos.w;
+                edgeVertices[i] *= pos.w;   // corresponds to voxel size
             }
         }
 

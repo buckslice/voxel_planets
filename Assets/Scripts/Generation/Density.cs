@@ -76,7 +76,7 @@ public class Density {
         //------------------------------------------------------------------
 
         //warping test----------------------------
-        float rad = 14000.0f;
+        float rad = 1000.0f;
         //Vector3 wp = worldPos;
         //wp.y -= rad;
         //float qx = Noise.Fractal3(wp, new Vector3(0.0f, 0.0f, 0.0f), 3, 0.01f);

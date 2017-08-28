@@ -243,6 +243,7 @@ public class MeshData {
             Vector3 faceNormal = Vector3.Cross(vb - va, vc - va).normalized;
 
             // if under min angle, totally smooth, if over max, totally sharp, otherwise blend between
+            // 16.0 was good threshold angle between sharp and smooth if no blend range (according to jlx)
             const float minAngle = 20.0f;
             const float maxAngle = 40.0f;
             float t1 = Mathf.InverseLerp(minAngle, maxAngle, Vector3.Angle(faceNormal, n1));
