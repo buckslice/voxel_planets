@@ -19,7 +19,7 @@ public class SplitManager : MonoBehaviour {
     public Text splitCountText;
 
     const int taskLaunchesPerFrame = 1;
-    int maxConcurrentTasks = 0;
+    const int maxConcurrentTasks = 4;
 
     // Use this for initialization
     void Awake() {
@@ -28,7 +28,6 @@ public class SplitManager : MonoBehaviour {
         //maxConcurrentTasks = Mathf.Max(1, Environment.ProcessorCount / 2);
         //Debug.Log("maxConcurrentTasks set: " + maxConcurrentTasks);
 
-        maxConcurrentTasks = 2;
     }
     
     // Update is called once per frame
@@ -85,6 +84,9 @@ public class SplitManager : MonoBehaviour {
         }
 
         splitCountText.text = "splits: " + splitList.Count;
+        //if(splitList.Count == 0) {
+        //    Debug.Log(Time.time);
+        //}
 
     }
 

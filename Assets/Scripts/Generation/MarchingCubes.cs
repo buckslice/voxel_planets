@@ -5,30 +5,90 @@ using System.Collections.Generic;
 public static class MarchingCubes {
 
     // start and end are used to add padding before and after basically
-    public static MeshData CalculateMeshData(Array3<sbyte> voxels, float voxelSize, int start = 0, int end = 0) {
+    public static MeshData CalculateMeshData(Array3<Voxel> voxels, float voxelSize, int start = 0, int end = 0) {
         List<Vector3> verts = new List<Vector3>();
-        //List<Color32> colors = new List<Color32>();
-
-        //List<int> tris = new List<int>();
+        List<Color32> colors = new List<Color32>();
 
         // used to be static but now in here so can be multithreaded
         Vector3[] edgeVertices = new Vector3[12];
 
-        sbyte[] density = new sbyte[8];
+        // later should do different materials and stuff using seperate submeshes or multimaterial on same mesh i dunno
+        // if want to have cool shiny ore!!!!
+        Color32[] edgeColors = new Color32[12];
+
+        Voxel[] cube = new Voxel[8]; // temp storage for 8 voxels corners of cube
 
         int endLen = voxels.size - 1 - end;   // voxel array is always cube
-
-        for (int x = start; x < endLen; x++) {
-            for (int y = start; y < endLen; y++) {
-                for (int z = start; z < endLen; z++) {
+        int materialColorLength = materialColors.Length;
+        int x, y, z, i;
+        for (z = start; z < endLen; z++) {
+            for (y = start; y < endLen; y++) {
+                for (x = start; x < endLen; x++) {
                     // get density values of 8 corners for each cube
-                    for (int i = 0; i < 8; i++) {
-                        density[i] = voxels[
+                    for (i = 0; i < 8; i++) {
+                        cube[i] = voxels[
                             x + vertexOffset[i, 0],
                             y + vertexOffset[i, 1],
                             z + vertexOffset[i, 2]];
                     }
-                    MarchCube(new Vector4(x, y, z, voxelSize), density, verts, edgeVertices);
+                    //MarchCube(new Vector4(x, y, z, voxelSize), density, block, verts, colors, edgeVertices, edgeColors);
+
+                    int flagIndex = 0;
+                    float offset = 0.0f;
+
+                    //Find which vertices are inside of the surface and which are outside
+                    // positive density is inside, negative is outside
+                    for (i = 0; i < 8; i++) if (cube[i].density >= ISOLEVEL) flagIndex |= 1 << i;
+
+                    //Find which edges are intersected by the surface
+                    int edgeFlags = cubeEdgeFlags[flagIndex];
+
+                    //If the cube is entirely inside or outside of the surface, then there will be no intersections
+                    if (edgeFlags == 0) continue;
+
+                    //Check each edge to see if it has a point of intersection with the surface
+                    for (i = 0; i < 12; i++) {
+                        //if there is an intersection on this edge
+                        if ((edgeFlags & (1 << i)) != 0) {
+                            // find approximate point of intersection of the surface between two points
+                            float v1 = cube[edgeConnection[i, 0]].density;
+                            float v2 = cube[edgeConnection[i, 1]].density;
+                            float delta = (v2 - v1);
+                            offset = (delta == 0.0f) ? 0.5f : (ISOLEVEL - v1) / delta;
+
+                            edgeVertices[i].x = x + (vertexOffset[edgeConnection[i, 0], 0] + offset * edgeDirection[i, 0]);
+                            edgeVertices[i].y = y + (vertexOffset[edgeConnection[i, 0], 1] + offset * edgeDirection[i, 1]);
+                            edgeVertices[i].z = z + (vertexOffset[edgeConnection[i, 0], 2] + offset * edgeDirection[i, 2]);
+                            edgeVertices[i] *= voxelSize;   // corresponds to voxel size
+
+                            byte m1 = cube[edgeConnection[i, 0]].material;
+                            byte m2 = cube[edgeConnection[i, 1]].material;
+
+                            if (m1 < materialColorLength && m2 < materialColorLength) {
+                                Color32 c = materialColors[m1];
+                                edgeColors[i] = Color32.Lerp(materialColors[m1], materialColors[m2], offset);
+                            } else {
+                                edgeColors[i] = new Color32(255, 0, 255, 255);  // magenta error color I guess? lols
+                            }
+                        }
+                    }
+
+                    //Save the triangles that were found. There can be up to five per cube
+                    for (i = 0; i < 5; i++) {
+                        if (triangleConnectionTable[flagIndex, 3 * i] < 0) break;
+
+                        int t1 = triangleConnectionTable[flagIndex, 3 * i];
+                        int t2 = triangleConnectionTable[flagIndex, 3 * i + 1];
+                        int t3 = triangleConnectionTable[flagIndex, 3 * i + 2];
+
+                        verts.Add(edgeVertices[t1]);
+                        verts.Add(edgeVertices[t2]);
+                        verts.Add(edgeVertices[t3]);
+
+                        colors.Add(edgeColors[t1]);
+                        colors.Add(edgeColors[t2]);
+                        colors.Add(edgeColors[t3]);
+                    }
 
                     //PolygonizeCell(new Vector3i(x, y, z), density, verts);
                     //TransvoxelExtractor.PolygonizeRegularCell(new Vector3i(x, y, z), voxels, verts, tris);
@@ -38,62 +98,68 @@ public static class MarchingCubes {
         }
 
         MeshData md = new MeshData(verts.ToArray());
-        //md.colors = colors.ToArray();
+        md.colors = colors.ToArray();
         return md;
         //return new MeshData(verts.ToArray(), tris.ToArray());
     }
 
     //MarchCube performs the Marching Cubes algorithm on a single cube
-    static void MarchCube(Vector4 pos, sbyte[] density, List<Vector3> vertList, Vector3[] edgeVertices) {
-        int i;
-        int flagIndex = 0;
-        float offset = 0.0f;
+    //static void MarchCube(Vector4 pos, sbyte[] density, byte[] block, List<Vector3> vertList, List<Color32> colors, Vector3[] edgeVertices, Color32[] edgeColors) {
+    //    int i;
+    //    int flagIndex = 0;
+    //    float offset = 0.0f;
 
-        //Find which vertices are inside of the surface and which are outside
-        // positive density is inside, negative is outside
-        for (i = 0; i < 8; i++) if (density[i] >= isoLevel) flagIndex |= 1 << i;
+    //    //Find which vertices are inside of the surface and which are outside
+    //    // positive density is inside, negative is outside
+    //    for (i = 0; i < 8; i++) if (density[i] >= isoLevel) flagIndex |= 1 << i;
 
-        //Find which edges are intersected by the surface
-        int edgeFlags = cubeEdgeFlags[flagIndex];
+    //    //Find which edges are intersected by the surface
+    //    int edgeFlags = cubeEdgeFlags[flagIndex];
 
-        //If the cube is entirely inside or outside of the surface, then there will be no intersections
-        if (edgeFlags == 0) return;
+    //    //If the cube is entirely inside or outside of the surface, then there will be no intersections
+    //    if (edgeFlags == 0) return;
 
-        //Find the point of intersection of the surface with each edge
-        for (i = 0; i < 12; i++) {
-            //if there is an intersection on this edge
-            if ((edgeFlags & (1 << i)) != 0) {
-                // find approximate point of intersection of the surface between two points
-                float v1 = density[edgeConnection[i, 0]];
-                float v2 = density[edgeConnection[i, 1]];
-                float delta = (v2 - v1);
-                offset = (delta == 0.0f) ? 0.5f : (isoLevel - v1) / delta;
+    //    //Check each edge to see if it has a point of intersection with the surface
+    //    for (i = 0; i < 12; i++) {
+    //        //if there is an intersection on this edge
+    //        if ((edgeFlags & (1 << i)) != 0) {
+    //            // find approximate point of intersection of the surface between two points
+    //            float v1 = density[edgeConnection[i, 0]];
+    //            float v2 = density[edgeConnection[i, 1]];
+    //            float delta = (v2 - v1);
+    //            offset = (delta == 0.0f) ? 0.5f : (isoLevel - v1) / delta;
 
-                edgeVertices[i].x = pos.x + (vertexOffset[edgeConnection[i, 0], 0] + offset * edgeDirection[i, 0]);
-                edgeVertices[i].y = pos.y + (vertexOffset[edgeConnection[i, 0], 1] + offset * edgeDirection[i, 1]);
-                edgeVertices[i].z = pos.z + (vertexOffset[edgeConnection[i, 0], 2] + offset * edgeDirection[i, 2]);
+    //            edgeVertices[i].x = pos.x + (vertexOffset[edgeConnection[i, 0], 0] + offset * edgeDirection[i, 0]);
+    //            edgeVertices[i].y = pos.y + (vertexOffset[edgeConnection[i, 0], 1] + offset * edgeDirection[i, 1]);
+    //            edgeVertices[i].z = pos.z + (vertexOffset[edgeConnection[i, 0], 2] + offset * edgeDirection[i, 2]);
 
-                edgeVertices[i] *= pos.w;   // corresponds to voxel size
-            }
-        }
+    //            edgeVertices[i] *= pos.w;   // corresponds to voxel size
+    //        }
+    //    }
 
-        //Save the triangles that were found. There can be up to five per cube
-        for (i = 0; i < 5; i++) {
-            if (triangleConnectionTable[flagIndex, 3 * i] < 0) break;
+    //    //Save the triangles that were found. There can be up to five per cube
+    //    for (i = 0; i < 5; i++) {
+    //        if (triangleConnectionTable[flagIndex, 3 * i] < 0) break;
 
-            vertList.Add(edgeVertices[triangleConnectionTable[flagIndex, 3 * i]]);
-            vertList.Add(edgeVertices[triangleConnectionTable[flagIndex, 3 * i + 1]]);
-            vertList.Add(edgeVertices[triangleConnectionTable[flagIndex, 3 * i + 2]]);
-        }
-    }
+    //        vertList.Add(edgeVertices[triangleConnectionTable[flagIndex, 3 * i]]);
+    //        vertList.Add(edgeVertices[triangleConnectionTable[flagIndex, 3 * i + 1]]);
+    //        vertList.Add(edgeVertices[triangleConnectionTable[flagIndex, 3 * i + 2]]);
+    //    }
+    //}
 
     //Target is the value that represents the surface of mesh
     //For example a range of -1 to 1, 0 would be the mid point were we want the surface to cut through
     //The target value does not have to be the mid point it can be any value with in the range
-    public static sbyte isoLevel = 0;
+    public const sbyte ISOLEVEL = 0;
 
     //Winding order of triangles use 2,1,0 or 0,1,2
     //static int[] windingOrder = new int[] { 0, 1, 2 };
+
+    static Color32[] materialColors = new Color32[] {
+        new Color32(216,202,168,255),   // SAND
+        new Color32(54,57,66,255),      // GREEN?
+        new Color32(40,73,7,255),       // ROCK
+    };
 
     // vertexOffset lists the positions, relative to vertex0, of each of the 8 vertices of a cube
     // vertexOffset[8][3]

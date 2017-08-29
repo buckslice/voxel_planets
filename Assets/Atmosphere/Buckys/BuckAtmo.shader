@@ -1,13 +1,11 @@
 ﻿Shader "Custom/BuckAtmo" {
 	Properties {
 		_Color ("Color", Color) = (1,1,1,1)
-		_MainTex ("Albedo (RGB)", 2D) = "white" {}
+		_MainTex ("Scattering", 2D) = "white" {}
 	}
 	SubShader {
         Tags { "Queue" = "Transparent" "RenderType" = "Transparent" }
         ZWrite Off
-
-
 
         Cull Front
         CGPROGRAM
@@ -23,11 +21,12 @@
             half NdotL = dot(s.Normal, lightDir);
             half4 c;
             c.rgb = s.Albedo * _LightColor0.rgb * (NdotL * atten);
-            c.a = max(s.Alpha * NdotL, 0.01);
+            c.a = max(s.Alpha * NdotL, 0.01);   // never fully alpha (for gameplay purposes)
             return c;
         }
 
         struct Input {
+            float2 angleAndDist;   // .x is angle to sun (dot product), .y is dist to atmo (density kinda)
             float2 uv_MainTex;
         };
 
@@ -35,7 +34,7 @@
 
         void surf(Input IN, inout SurfaceOutput o) {
             // Albedo comes from a texture tinted by color
-            fixed4 c = tex2D(_MainTex, IN.uv_MainTex) * _Color;
+            fixed4 c = _Color;
             o.Albedo = c.rgb;
             o.Alpha = c.a;
         }

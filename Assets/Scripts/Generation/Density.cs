@@ -1,5 +1,14 @@
 ﻿using UnityEngine;
 
+public struct Voxel {
+    public sbyte density;
+    public byte material;
+    public Voxel(sbyte density, byte material) {
+        this.density = density;
+        this.material = material;
+    }
+}
+
 public class Density {
 
     private static float Sphere(Vector3 worldPos, Vector3 origin, float radius) {
@@ -43,7 +52,7 @@ public class Density {
         return Mathf.Max(a, b);
     }
 
-    public static float Eval(Vector3 worldPos) {
+    public static Voxel Eval(Vector3 worldPos, float voxelSize) {
         float d = 0.0f;
 
         // FRACTAL PLANET ----------------------------------------------------------------
@@ -91,7 +100,9 @@ public class Density {
         //worldPos.y -= rad;
         //d = Sphere(worldPos, Vector3.zero, rad);
         d = Sphere(worldPos, new Vector3(0, 0, 0), rad);
-        d += Noise.Fractal3(worldPos, Vector3.one * 1000.0f, 8, 0.001f, 0.5f, 2f) * 100.0f;
+
+        float offset = Noise.Fractal3(worldPos, Vector3.one * 1000.0f, 8, 0.001f, 0.5f, 2f) * 100.0f;
+        d += offset;
 
         //d = Sphere(worldPos, Vector3.zero, 14000.0f);
 
@@ -146,8 +157,25 @@ public class Density {
         //d += Noise.Fractal3(worldPos, new Vector3(-100, 600, -500), 9, 0.01f, 0.5f, 2.0f) * 20.0f;
         //--------------------------------------------------------------------------------
 
+        Voxel v;
+        // this seems wierd still i dunno
+        v.density = (sbyte)(Mathf.Clamp(Mathf.Round(d * 128.0f / voxelSize), -128.0f, 127.0f));
 
-        return d;
+        float col = Noise.Fractal3(worldPos, Vector3.one * 100.0f, 4, 0.005f);
+        //float col = offset;
+        // need to figure out way to understand how to think in terms of density lol...
+        byte mat = 0;
+        if(col < -.7f) {
+            mat = 0;
+        }else if (col < 0.3f) {
+            mat = 1;
+        }else {
+            mat = 2;
+        }
+
+        v.material = mat;
+
+        return v;
     }
 
 }

@@ -374,6 +374,7 @@ public static class Noise {
         return 32.0f * (n0 + n1 + n2 + n3);
     }
 
+    // range -1,1   but kinda busts outa bounds occasionally (could clamp later if needed but like it this way pree good)
     public static float Fractal3(Vector3 v, Vector3 offset, int octaves, float frequency, float persistence = 0.5f, float lacunarity = 2.0f) {
         double total = 0.0f;
         float amplitude = 1.0f;

@@ -20,8 +20,7 @@ public class Octree {
     public int depth;  // 0 is root, MAX_LEVEL is depth limit
     int branch;  // which child of your parent are you
 
-    Array3<sbyte> voxels; // need to save for vertex modification (should prob be called density)
-    Array3<byte> blocks;
+    Array3<Voxel> voxels; // need to save for vertex modification (should prob be called density)
 
     Vector3 localPos;    // position of voxel grid (denotes the corner so it gets offset to remain centered)
 
@@ -139,7 +138,7 @@ public class Octree {
         obj.mr.material = body.mat; // incase terrain is edited after
         obj.mpb.SetVector(ShaderProps.localOffset, localPos);
         obj.UpdatePropBlock();
-        
+
         if (mesh == null) {
             obj.ov.shouldDraw = false;
         } else {
@@ -399,10 +398,12 @@ public class Octree {
             int y1 = Mathf.Clamp((int)(c.y + e.y), 0, SIZE);
             int z1 = Mathf.Clamp((int)(c.z + e.z), 0, SIZE);
 
-            for (int x = x0; x <= x1; ++x) {
+            for (int z = z0; z <= z1; ++z) {
                 for (int y = y0; y <= y1; ++y) {
-                    for (int z = z0; z <= z1; ++z) {
-                        voxels[x, y, z] = (sbyte)Mathf.Clamp(voxels[x, y, z] + delta, -128, 127);
+                    for (int x = x0; x <= x1; ++x) {
+                        Voxel v = voxels[x, y, z];
+                        v.density = (sbyte)Mathf.Clamp(v.density + delta, -128, 127);
+                        voxels[x, y, z] = v;
                     }
                 }
             }

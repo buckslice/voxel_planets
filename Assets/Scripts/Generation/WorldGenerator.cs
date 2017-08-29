@@ -8,11 +8,14 @@ public static class WorldGenerator {
     // voxelSize is how big each voxel should be
     // radius is radius of planet
     // position is starting position of quadtree
-    public static Array3<sbyte> CreateVoxels(
+    public static Array3<Voxel> CreateVoxels(
         int size, int depth, float voxelSize, Vector3 pos) {
 
         //float[][][] voxels = VoxelUtils.Init3DArray<float>(size);
-        Array3<sbyte> voxels = new Array3<sbyte>(size, Vector3i.Zero);
+
+        // Vector3i is for some hash lookup shit i think if i wanted to do
+        // like hashset<Vector3i, Array3?)
+        Array3<Voxel> voxels = new Array3<Voxel>(size, Vector3i.Zero); 
 
         //int s = (depth == 0) ? 0 : 1;
         //s = 0;  // temp until figure out data inheritance
@@ -35,13 +38,11 @@ public static class WorldGenerator {
         // sbyte goes from -128 to 127 (so -128, -1 and 0 to 127 should be range)
 
         int x, y, z;
-        for (x = 0; x < size; ++x) {
+        for (z = 0; z < size; ++z) {
             for (y = 0; y < size; ++y) {
-                for (z = 0; z < size; ++z) {
+                for (x = 0; x < size; ++x) {
                     Vector3 worldPos = new Vector3(x, y, z) * voxelSize + pos;
-                    float density = Density.Eval(worldPos);
-
-                    voxels[x, y, z] = (sbyte)(Mathf.Clamp(Mathf.Round(density * 128.0f / voxelSize), -128.0f, 127.0f));
+                    voxels[x, y, z] = Density.Eval(worldPos, voxelSize);
                 }
             }
         }

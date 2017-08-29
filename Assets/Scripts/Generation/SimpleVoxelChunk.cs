@@ -12,7 +12,7 @@ public class SimpleVoxelChunk : MonoBehaviour {
         float voxelSize = 1.0f;
         int size = 33;
 
-        Array3<sbyte> voxels = WorldGenerator.CreateVoxels(size, 0, voxelSize, Vector3.zero);
+        Array3<Voxel> voxels = WorldGenerator.CreateVoxels(size, 0, voxelSize, Vector3.zero);
         MeshData data = MarchingCubes.CalculateMeshData(voxels, voxelSize);
         data.CalculateNormals();
 

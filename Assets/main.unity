@@ -189,8 +189,8 @@ Camera:
   m_GameObject: {fileID: 257690249}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
-  m_BackGroundColor: {r: 0, g: 0, b: 0, a: 0.019607844}
+  m_ClearFlags: 2
+  m_BackGroundColor: {r: 0.17517298, g: 0.46116814, b: 0.7941176, a: 1}
   m_NormalizedViewPortRect:
     serializedVersion: 2
     x: 0
@@ -440,7 +440,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bcb54d5f7e755b747bb8621daae8d199, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mat: {fileID: 2100000, guid: f720fa7552efe2d4f951aa61e8e11eba, type: 2}
+  mat: {fileID: 2100000, guid: 5825b4df58eb7bb4eaef8e4188b59298, type: 2}
   testMat: {fileID: 2100000, guid: d9b480fafe34bfd4d969afd8d8636f5c, type: 2}
   splitLevels:
   - 100000
@@ -1367,13 +1367,13 @@ Transform:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 2066360345}
-  m_LocalRotation: {x: -0.42055085, y: 0.38611934, z: 0.530189, w: -0.626856}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 16000, y: 16000, z: 16000}
+  m_LocalScale: {x: 1500, y: 1500, z: 1500}
   m_Children: []
   m_Father: {fileID: 979317406}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 6.7660003, y: -789.48, z: -445.143}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &2066360347
 MeshFilter:
   m_ObjectHideFlags: 0
