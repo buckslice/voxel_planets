@@ -7,7 +7,8 @@ public class DrawBounds : MonoBehaviour {
     public Material lineMat;
 
     Camera cam;
-    Bounds bounds;
+    public Bounds bounds { set; private get; }
+    public Matrix4x4 matrix { set; private get; }
 
     void Start() {
         cam = GetComponent<Camera>();
@@ -32,6 +33,7 @@ public class DrawBounds : MonoBehaviour {
         v[7] = new Vector3(c.x + e.x, c.y + e.y, c.z + e.z);
 
         GL.PushMatrix();
+        GL.MultMatrix(matrix);
 
         lineMat.SetPass(0);
 

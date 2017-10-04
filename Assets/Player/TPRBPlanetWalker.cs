@@ -161,9 +161,9 @@ public class TPRBPlanetWalker : MonoBehaviour {
 
         Octree tree = null;
         if (planet && planet.root != null) {
-            tree = planet.root.FindOctree(Octree.WorldToLocal(planet.transform, transform.position));
+            tree = planet.root.FindOctree(transform.position);
         }
-        //if (tree == null) {
+        //if (tree == null) {   
         //    Debug.Log("null tree");
         //}
         //if (!tree.IsMaxDepth()) {

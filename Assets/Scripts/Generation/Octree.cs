@@ -45,7 +45,7 @@ public class Octree {
     public const float fadeRate = 1.0f; // 0.5f would be half of normal time, so 2 seconds
 
     float timeSinceCreation = 0.0f;
-    const float timeFullyCreated = 0.75f;
+    const float timeFullyCreated = 0.5f;
     const float blendRange = 0.05f; // percent of each split level that is geoblended
 
     public Octree(CelestialBody body, Octree parent, Vector3 center, int depth, int branch) {
@@ -135,7 +135,7 @@ public class Octree {
         obj.go.transform.localRotation = Quaternion.identity;
         //obj.go.transform.position = pos;
 
-        obj.mr.material = body.mat; // incase terrain is edited after
+        obj.mr.material = body.terrainMat; // incase terrain is edited after
         obj.mpb.SetVector(ShaderProps.localOffset, localPos);
         obj.UpdatePropBlock();
 
@@ -331,46 +331,47 @@ public class Octree {
 
     // given point in LOCALSPACE find the smallest octree node that contains this point
     // returns null if outside the tree
-    public Octree FindOctree(Vector3 point) {
-        if (depth == 0 && !localArea.Contains(point)) {
-            Debug.LogWarning("FindOctree called outside of root bounds");
+
+    public Octree FindOctree(Vector3 worldPos) {
+        Vector3 point = WorldToLocal(body.transform, worldPos);
+        if (!localArea.Contains(point)) {
+            Debug.LogWarning("FindOctree called outside of initial tree bounds");
             return null;
         }
 
-        if (!hasChildren) {
-            return this;
-        }
-
-        if (point.y > localArea.center.y) {
-            if (point.z > localArea.center.z) {
-                if (point.x > localArea.center.x) {
-                    return children[0].FindOctree(point);
+        Octree cur = this;
+        while (cur.hasChildren) {
+            if (point.y > cur.localArea.center.y) {
+                if (point.z > cur.localArea.center.z) {
+                    if (point.x > cur.localArea.center.x) {
+                        cur = cur.children[0];
+                    } else {
+                        cur = cur.children[1];
+                    }
                 } else {
-                    return children[1].FindOctree(point);
+                    if (point.x > cur.localArea.center.x) {
+                        cur = cur.children[3];
+                    } else {
+                        cur = cur.children[2];
+                    }
                 }
             } else {
-                if (point.x > localArea.center.x) {
-                    return children[3].FindOctree(point);
+                if (point.z > cur.localArea.center.z) {
+                    if (point.x > cur.localArea.center.x) {
+                        cur = cur.children[4];
+                    } else {
+                        cur = cur.children[5];
+                    }
                 } else {
-                    return children[2].FindOctree(point);
-                }
-            }
-        } else {
-            if (point.z > localArea.center.z) {
-                if (point.x > localArea.center.x) {
-                    return children[4].FindOctree(point);
-                } else {
-                    return children[5].FindOctree(point);
-                }
-            } else {
-                if (point.x > localArea.center.x) {
-                    return children[7].FindOctree(point);
-                } else {
-                    return children[6].FindOctree(point);
+                    if (point.x > cur.localArea.center.x) {
+                        cur = cur.children[7];
+                    } else {
+                        cur = cur.children[6];
+                    }
                 }
             }
         }
-
+        return cur;
     }
 
     public bool IsMaxDepth() {
@@ -379,7 +380,8 @@ public class Octree {
 
     // should only be called from root (maybe make RootOctree subclass of octree with these methods in it)
     public void EditVoxels(Bounds b, int delta) {
-        if (!localArea.Intersects(b)) {
+        if (depth != 0 || !localArea.Intersects(b)) {
+            Debug.LogWarning("EditVoxels error i dunno");
             return;
         }
 

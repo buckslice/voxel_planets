@@ -9,12 +9,14 @@ public class VoxelMining : MonoBehaviour {
 
     public LayerMask terrainLayer;
 
-    public Material meshMat;
-    DrawBounds[] boundsDrawers;
+    public Material wireMat;
+    DrawBounds[] boundsDrawers; // one for each camera
     public Light flashLight;
 
     // if you want to manually specify a certain chunk to draw the wireframe of
     public ChunkObject forceDrawChunk = null;
+
+    Octree lastTree = null;
 
     Camera cam;
 
@@ -67,23 +69,42 @@ public class VoxelMining : MonoBehaviour {
             for (int i = 0; i < boundsDrawers.Length; ++i) {
                 boundsDrawers[i].enabled = !boundsDrawers[i].enabled;
             }
+            if (lastTree != null) {
+                if (boundsDrawers[0].enabled) {
+                    lastTree.obj.mr.material = wireMat;
+                } else {
+                    lastTree.obj.mr.material = planet.terrainMat;
+                }
+            }
+
         }
         if (boundsDrawers[0].enabled) {
             if (forceDrawChunk == null) {
                 Octree tree = null;
                 if (planet && planet.root != null) {
-                    tree = planet.root.FindOctree(transform.localPosition);
+                    tree = planet.root.FindOctree(transform.position);
                     if (tree != null) {
                         // draw chunk boundaries
                         for (int i = 0; i < boundsDrawers.Length; ++i) {
-                            boundsDrawers[i].SetBounds(tree.localArea);
+                            boundsDrawers[i].bounds = tree.localArea;
+                            boundsDrawers[i].matrix = planet.currentMatrix;
                         }
-                        // draw chunk mesh wireframe
-                        Graphics.DrawMesh(tree.obj.mf.mesh, tree.obj.go.transform.position, Quaternion.identity, meshMat, 0);
+
+                        if(tree != lastTree) {
+                            if (lastTree != null) {
+                                lastTree.obj.mr.material = planet.terrainMat;
+                            }
+                            tree.obj.mr.material = wireMat;
+                            lastTree = tree;
+                        }
                     }
                 }
             } else {
-                Graphics.DrawMesh(forceDrawChunk.mf.mesh, forceDrawChunk.go.transform.position, Quaternion.identity, meshMat, 0);
+                Graphics.DrawMesh(
+                    forceDrawChunk.mf.mesh, 
+                    forceDrawChunk.go.transform.position,
+                    forceDrawChunk.go.transform.rotation,
+                    wireMat, 0);
             }
         }
 

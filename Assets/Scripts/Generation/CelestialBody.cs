@@ -2,8 +2,8 @@
 
 public class CelestialBody : MonoBehaviour {
 
-    public Material mat;
-    public Material testMat;
+    public Material terrainMat;
+    
     public float[] splitLevels;
     Transform playerTransform;
     public Vector3 player;
@@ -52,11 +52,15 @@ public class CelestialBody : MonoBehaviour {
 
     float invalidCheckTimer = 0.0f;
     void Update() {
+        if (Input.GetKey(KeyCode.P)) {
+            transform.Rotate(rotation * Time.deltaTime);
+        }
         currentMatrix = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one);
 
         // cache player position this frame because like a billion things reference
         // this and the cost of transform.getposition adds up
         player = playerTransform.position;
+
         root.Update();
         invalidCheckTimer -= Time.deltaTime;
         if (invalidCheckTimer < 0.0f) {
@@ -65,10 +69,6 @@ public class CelestialBody : MonoBehaviour {
             }
             invalidCheckTimer = 2.0f;
             //Debug.Log(root.GetNumGameObjects(true));
-        }
-
-        if (Input.GetKey(KeyCode.P)) {
-            transform.Rotate(rotation * Time.deltaTime);
         }
     }
 #endif

@@ -19,7 +19,7 @@ public class SplitManager : MonoBehaviour {
     public Text splitCountText;
 
     const int taskLaunchesPerFrame = 1;
-    const int maxConcurrentTasks = 4;
+    const int maxConcurrentTasks = 2;
 
     // Use this for initialization
     void Awake() {
