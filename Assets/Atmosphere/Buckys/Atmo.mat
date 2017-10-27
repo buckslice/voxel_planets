@@ -7,7 +7,7 @@ Material:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_Name: Atmo
-  m_Shader: {fileID: 4800000, guid: 85bfb35f02a4d8e45ba871f4836e2c82, type: 3}
+  m_Shader: {fileID: 4800000, guid: 7a882d54c38f2504c99208003c25184f, type: 3}
   m_ShaderKeywords: _ALPHAPREMULTIPLY_ON _GLOSSYREFLECTIONS_OFF _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
   m_LightmapFlags: 0
   m_EnableInstancingVariants: 0

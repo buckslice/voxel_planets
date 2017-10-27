@@ -52,13 +52,30 @@ public class Density {
         return Mathf.Max(a, b);
     }
 
+    public static Voxel EvalTerrain(Vector3 worldPos, float voxelSize) {
+        float d = worldPos.y;
+        d += Noise.Fractal(worldPos+ new Vector3(-100, 600, -500), 9, 0.01f, 0.5f, 2.0f) * 20.0f;
+        sbyte db = (sbyte)(Mathf.Clamp(Mathf.Round(d * 128.0f / voxelSize), -128.0f, 127.0f));
+        return new Voxel(db, 0);
+    }
+
+    public static Voxel EvalTorusTest(Vector3 worldPos, float voxelSize) {
+        float d = 0.0f;
+
+        d = Torus(worldPos, Vector3.one * 32, new Vector2(20.0f, 8.0f));
+
+        sbyte db = (sbyte)(Mathf.Clamp(Mathf.Round(d * 128.0f / voxelSize), -128.0f, 127.0f));
+        byte mat = (byte)((int)(worldPos.magnitude) % 3);
+        return new Voxel(db, mat);
+    }
+
     public static Voxel EvalSphereTest(Vector3 worldPos, float voxelSize) {
         float d = 0.0f;
 
         float rad = 1000.0f;
         d = Sphere(worldPos, new Vector3(0, 0, 0), rad);
-        float offset = Noise.Fractal3(worldPos, Vector3.one * 1000.0f, 8, 0.001f, 0.5f, 2f) * 100.0f;
-        d += offset;
+        float offset = Noise.Fractal(worldPos + Vector3.one * 1000.0f, 8, 0.001f, 0.5f, 2f) * 100.0f;
+        //d += offset;
 
         sbyte db = (sbyte)(Mathf.Clamp(Mathf.Round(d * 128.0f / voxelSize), -128.0f, 127.0f));
         byte mat = (byte)((int)(worldPos.magnitude / 50.0f) % 3);
@@ -81,14 +98,14 @@ public class Density {
 
         d = Sphere(worldPos, new Vector3(0, 0, 0), rad);
 
-        float offset = Noise.Fractal3(worldPos, Vector3.one * 1000.0f, 8, 0.001f, 0.5f, 2f) * 100.0f;
+        float offset = Noise.Fractal(worldPos + Vector3.one * 1000.0f, 8, 0.001f, 0.5f, 2f) * 100.0f;
         d += offset;
 
         Voxel v;
         // this seems wierd still i dunno
         v.density = (sbyte)(Mathf.Clamp(Mathf.Round(d * 128.0f / voxelSize), -128.0f, 127.0f));
 
-        float col = Noise.Fractal3(worldPos, Vector3.one * 100.0f, 4, 0.005f);
+        float col = Noise.Fractal(worldPos + Vector3.one * 100.0f, 4, 0.005f);
         //float col = offset;
         // need to figure out way to understand how to think in terms of density lol...
         byte mat = 0;
@@ -112,12 +129,14 @@ public class Density {
         wp.y -= rad;
         float planet = (wp - new Vector3(0, -rad, 0)).magnitude - rad;
 
-        float noise = Noise.Fractal3(wp, Vector3.one * 1000.0f, 7, 0.001f, 0.5f, 2f);
+        //float mainNoise = Noise.Fractal(wp + Vector3.one * 1000.0f, 7, 0.001f, 0.5f, 2f);
 
-        float col = noise;
+        float mainNoise = Noise.Ridged(wp + Vector3.one * 1000.0f, 7, 0.001f, 0.5f, 2f, true) * -1.0f;
+
+        float col = mainNoise;
         byte mat = 0;
 
-        float grassLevel = Noise.Fractal3(wp, Vector3.one * 50.0f, 5, 0.01f) * 0.2f;
+        float grassLevel = Noise.Fractal(wp + Vector3.one * 50.0f, 5, 0.01f) * 0.2f;
         if (col < -.7f) {
             mat = 0;
         } else if (col < 0.3f + grassLevel) {
@@ -126,12 +145,12 @@ public class Density {
             mat = 2;
         }
 
-        float highFreqNoise = Noise.Fractal3(wp, Vector3.one * 250.0f, 5, 0.02f) * 10.0f;
-        float noiseSqrd = (noise + 1.0f) / 2.0f;
-        noiseSqrd *= noiseSqrd;
+        float highFreqNoise = Noise.Ridged(wp + Vector3.one * 250.0f, 5, 0.02f) * 10.0f * 1.0f;
+        // this was basically doing what smoothValleys in ridged does
+        float n = Mathf.LerpUnclamped(0.3f, 1.0f, (mainNoise + 1.0f) / 2.0f);
 
-        planet += noise * 100.0f;
-        planet += highFreqNoise * (1.0f - noiseSqrd);
+        planet += mainNoise * 100.0f;
+        planet += highFreqNoise * (1.0f - n * n);
         float d = planet;
 
         Voxel v;
@@ -194,7 +213,7 @@ public class Density {
         //d = Sphere(worldPos, Vector3.zero, rad);
         d = Sphere(worldPos, new Vector3(0, 0, 0), rad);
 
-        float offset = Noise.Fractal3(worldPos, Vector3.one * 1000.0f, 8, 0.001f, 0.5f, 2f) * 100.0f;
+        float offset = Noise.Fractal(worldPos + Vector3.one * 1000.0f, 8, 0.001f, 0.5f, 2f) * 100.0f;
         d += offset;
 
         //d = Sphere(worldPos, Vector3.zero, 14000.0f);
@@ -254,7 +273,7 @@ public class Density {
         // this seems wierd still i dunno
         v.density = (sbyte)(Mathf.Clamp(Mathf.Round(d * 128.0f / voxelSize), -128.0f, 127.0f));
 
-        float col = Noise.Fractal3(worldPos, Vector3.one * 100.0f, 4, 0.005f);
+        float col = Noise.Fractal(worldPos + Vector3.one * 100.0f, 4, 0.005f);
         //float col = offset;
         // need to figure out way to understand how to think in terms of density lol...
         byte mat = 0;

@@ -10,7 +10,7 @@ public class CelestialBody : MonoBehaviour {
     //public float surfaceRadius = 500.0f;    // need to actually set these based off generation
     public float atmosphereRadius = 1000.0f;
     public float gravityRadius = 1500.0f;
-
+    public Material testMat;
     public Octree root = null;
 
     const float maxDepthDist = 100.0f;  // aka nodes should be maximally split within 100 units of player
@@ -19,7 +19,7 @@ public class CelestialBody : MonoBehaviour {
 
     public Matrix4x4 currentMatrix = new Matrix4x4();
 
-#if true
+#if false
     // Use this for initialization
     void Start() {
         // will later need to set this in chunk material property blocks i think
@@ -125,7 +125,7 @@ public class CelestialBody : MonoBehaviour {
     // simple example here
     // currently testing marching tetrahedra implementation
     // make sure to switch to proper world gen procedure that is visible from 0-32m world units
-#if false
+#if true
 
     ChunkObject go;
     ChunkObject go2;
@@ -134,21 +134,24 @@ public class CelestialBody : MonoBehaviour {
     void Start() {
         miner = GameObject.Find("Player").GetComponent<VoxelMining>();
 
-        Array3<sbyte> voxels = WorldGenerator.CreateVoxels(33, 0, 1.0f, Vector3.zero);
+        Array3<Voxel> voxels = WorldGenerator.CreateVoxels(33, 0, 1.0f, Vector3.zero);
+        //Array3<Voxel> voxels = WorldGenerator.CreateVoxels(64, 0, 1.0f, Vector3.zero);
 
         MeshData data = MarchingCubes.CalculateMeshData(voxels, 1.0f);
         Mesh mesh = data.CreateMesh();
         go = SplitManager.GetObject();
         go.mr.enabled = false;
+        go.mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
         go.mf.sharedMesh = mesh;
         go.mr.material = testMat;
 
         MeshData data2 = MarchingTetrahedra.CalculateMeshData(voxels, 1.0f);
-        //data2.CalculateSharedNormals();
+        data2.CalculateSharedNormals();
         Mesh mesh2 = data2.CreateMesh();
         go2 = SplitManager.GetObject();
         go2.mf.sharedMesh = mesh2;
         go2.mr.material = testMat;
+        go2.mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
         miner.forceDrawChunk = go2;
 
     }

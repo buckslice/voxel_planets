@@ -19,7 +19,7 @@ public class SplitManager : MonoBehaviour {
     public Text splitCountText;
 
     const int taskLaunchesPerFrame = 1;
-    const int maxConcurrentTasks = 2;
+    const int maxConcurrentTasks = 4;
 
     // Use this for initialization
     void Awake() {
@@ -36,12 +36,37 @@ public class SplitManager : MonoBehaviour {
         while(splitList.Count > 0   // while there are things to split
            && newTasks < taskLaunchesPerFrame  // and havent launched too many tasks this frame
            && taskList.Count < maxConcurrentTasks) { // and there are less tasks going than max
+
+            // find deepest depth then find closest to cam from those and split
+            //int d = 0;
+            //for(int i = 0; i < splitList.Count; ++i) {
+            //    d = Mathf.Max(d, splitList[i].depth);
+            //}
+            //List<int> lowDepthList = new List<int>();
+            //for(int i = 0; i < splitList.Count; ++i) {
+            //    if(splitList[i].depth == d) {
+            //        lowDepthList.Add(i);
+            //    }
+            //}
+
+            //int count = lowDepthList.Count;
+            //int endIndex = count - 1;
+            //float closestDist = float.MaxValue;
+            //int closestIndex = lowDepthList[endIndex];
+            //for (int i = 0; i < count; ++i) {
+            //    float dist = splitList[lowDepthList[i]].GetSqrDistToCamFromCenter();
+            //    if (dist < closestDist) {
+            //        closestIndex = lowDepthList[i];
+            //        closestDist = dist;
+            //    }
+            //}
+
             // find octree closest to cam and split that
             int count = splitList.Count;
             int endIndex = count - 1;
             float closestDist = float.MaxValue;
             int closestIndex = endIndex;
-            for(int i = 0; i < count; ++i) {
+            for (int i = 0; i < count; ++i) {
                 float dist = splitList[i].GetSqrDistToCamFromCenter();
                 if (dist < closestDist) {
                     closestIndex = i;

@@ -25,7 +25,7 @@ public class TPRBPlanetWalker : MonoBehaviour {
     public float camDistance = 10f; // r in spherecial coordinates
     public Vector3 gravitySource = Vector3.zero;
     public float gravityStrength = 10.0f;
-    public bool turnTowardsGravity = true;
+    public bool turnTowardsGravity = true;  // TODO FIX THIS DOESNT WORK IN FLYMODE
     public Transform camPivot; // should be child empty gameobject at eye level for camera
     public Transform model;    // should be child gameobject that is parent of all visuals for player
     public SkinnedMeshRenderer skr;
@@ -157,6 +157,7 @@ public class TPRBPlanetWalker : MonoBehaviour {
 
         if (Input.GetKeyDown(KeyCode.F1)) {
             flyMode = !flyMode;
+            //rigid.isKinematic = flyMode;
         }
 
         Octree tree = null;
@@ -171,7 +172,9 @@ public class TPRBPlanetWalker : MonoBehaviour {
         //}
 
         rigid.isKinematic = flyMode || tree == null || !tree.IsMaxDepth();
-        tree.obj.ov.color = Color.green;
+        if (tree != null) {
+            tree.obj.ov.color = Color.green;
+        }
 
         if (flyMode) {
             Vector3 gravDir = (gravitySource - tform.position).normalized;

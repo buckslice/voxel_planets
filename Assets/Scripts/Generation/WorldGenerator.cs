@@ -42,7 +42,7 @@ public static class WorldGenerator {
             for (y = 0; y < size; ++y) {
                 for (x = 0; x < size; ++x) {
                     Vector3 worldPos = new Vector3(x, y, z) * voxelSize + pos;
-                    voxels[x, y, z] = Density.EvalBigPlanet(worldPos, voxelSize);
+                    voxels[x, y, z] = Density.EvalTerrain(worldPos, voxelSize);
                 }
             }
         }

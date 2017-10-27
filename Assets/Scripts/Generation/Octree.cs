@@ -196,37 +196,61 @@ public class Octree {
     // could split back into two like before for #efficiency but probly not worth
     // when morphing, first fade in children then fade out parent
     // if timeFullyCreated is 1 then children fade in from 0-0.5, parent fades out from 0.5-1
+
+    // maybe just dont do the halfway morph. either start morphing or unmorphing
+    // removes the distance calculations
+    //void SetGeomorph() {
+    //    timeSinceCreation += Time.deltaTime;
+    //    float t = timeSinceCreation / timeFullyCreated;
+
+    //    if (hasChildren) {  // internal node
+    //        float dist = (body.player - LocalToWorld(body.transform, localArea.center)).magnitude;
+    //        float level = body.splitLevels[depth];    // my depth
+    //        float absDist = Mathf.Abs(dist - level);
+    //        float blendBand = level * blendRange;
+
+    //        t = Mathf.Min(t, Mathf.Min(absDist / blendBand, 1.0f));
+    //        t = Mathf.Clamp01(2.0f - 2.0f * t);
+    //        obj.mr.enabled = t > 0.0f;
+
+    //    } else {    // leaf node
+    //        if (parent == null) {
+    //            Debug.Assert(depth == 0);
+    //            obj.SetTransparency(1.0f);
+    //            return;
+    //        }
+    //        float dist = (body.player - LocalToWorld(body.transform, parent.localArea.center)).magnitude;
+    //        float level = body.splitLevels[depth - 1];    // level at parents depth
+    //        float absDist = Mathf.Abs(dist - level);
+    //        float blendBand = level * blendRange;
+
+    //        t = Mathf.Min(t, Mathf.Min(absDist / blendBand, 1.0f));
+    //        t = Mathf.Clamp01(2.0f * t);
+    //    }
+
+    //    obj.SetTransparency(t);
+
+    //}
+
+    // faster version of set geomorph that only uses timeSinceCreation to determine blend amount
+    // saves on a lot of distance calls
+    // only problem is when merging it pops back (need to have timer before merge to reblend?)
     void SetGeomorph() {
         timeSinceCreation += Time.deltaTime;
         float t = timeSinceCreation / timeFullyCreated;
 
-        if (hasChildren) {  // internal node
-            float dist = (body.player - LocalToWorld(body.transform, localArea.center)).magnitude;
-            float level = body.splitLevels[depth];    // my depth
-            float absDist = Mathf.Abs(dist - level);
-            float blendBand = level * blendRange;
-
-            t = Mathf.Min(t, Mathf.Min(absDist / blendBand, 1.0f));
+        if (hasChildren) {
             t = Mathf.Clamp01(2.0f - 2.0f * t);
             obj.mr.enabled = t > 0.0f;
-
-        } else {    // leaf node
+        } else {
             if (parent == null) {
                 Debug.Assert(depth == 0);
-                obj.SetTransparency(1.0f);
-                return;
+                t = 1.0f;
+            } else {
+                t = Mathf.Clamp01(2.0f * t);
             }
-            float dist = (body.player - LocalToWorld(body.transform, parent.localArea.center)).magnitude;
-            float level = body.splitLevels[depth - 1];    // level at parents depth
-            float absDist = Mathf.Abs(dist - level);
-            float blendBand = level * blendRange;
-
-            t = Mathf.Min(t, Mathf.Min(absDist / blendBand, 1.0f));
-            t = Mathf.Clamp01(2.0f * t);
         }
-
         obj.SetTransparency(t);
-
     }
 
     public Task<SplitData> SplitAsync() {
@@ -272,6 +296,10 @@ public class Octree {
     //    return area.SqrDistance(body.player);
     //}
 
+    // this could be made into a lookup
+    // just calculate distance to planet once then should be able to figure out 
+    // distance to any node based on branch and leaf and stuff i think...
+    // just need to calculate new local up and forward vectors i think...
     public float GetSqrDistToCamFromCenter() {
         //return (body.cam.position - area.center).sqrMagnitude;
         return (body.player - LocalToWorld(body.transform, localArea.center)).sqrMagnitude;
