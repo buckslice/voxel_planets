@@ -5,6 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine.UI;
 
+// refactor to be like singleton like marchingcubesdispatcher?
+// doesnt really matter actually i dunno, this ways kinda simpler
 public class SplitManager : MonoBehaviour {
 
     // shared list between main and worker thread of octrees to split
@@ -108,7 +110,7 @@ public class SplitManager : MonoBehaviour {
             }
         }
 
-        splitCountText.text = "splits: " + splitList.Count;
+        //splitCountText.text = "splits: " + splitList.Count;
         //if(splitList.Count == 0) {
         //    Debug.Log(Time.time);
         //}
@@ -197,7 +199,7 @@ public class ChunkObject {
         if(t == lastTrans) {
             return; // i have a feeling setting a property block has a decent cost (so only do when changes)
         }
-        mpb.SetFloat(ShaderProps.transparency, t);
+        mpb.SetFloat(ShaderProps.Transparency, t);
         UpdatePropBlock();
         lastTrans = t;
     }

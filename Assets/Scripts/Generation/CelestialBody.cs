@@ -19,19 +19,23 @@ public class CelestialBody : MonoBehaviour {
 
     public Matrix4x4 currentMatrix = new Matrix4x4();
 
-#if false
+#if true
     // Use this for initialization
     void Start() {
         // will later need to set this in chunk material property blocks i think
         //mat.SetVector("_PlanetCenter", transform.position);
 
         root = new Octree(this, null, Vector3.zero, 0, 0);
-        root.BuildGameObject(root.GenerateMesh(true));
+        //root.BuildGameObject(root.GenerateMesh(true));
+
+        // not sure if this is great way to do it
+        root.BuildGameObjectCompute();
+        root.SplitCompute();
 
         // calculating split levels by hand now
         // too hard to get right witha formula to look good both on surface and
         // from high up in space
-        Debug.Assert(splitLevels.Length == Octree.MAX_DEPTH + 1);
+        Debug.Assert(splitLevels.Length >= Octree.MAX_DEPTH + 1);
         //splitLevels = new float[Octree.MAX_DEPTH + 1];
         //int len = splitLevels.Length;
         //splitLevels[len - 1] = maxDepthDist;
@@ -52,8 +56,12 @@ public class CelestialBody : MonoBehaviour {
 
     float invalidCheckTimer = 0.0f;
     void Update() {
-        if (Input.GetKey(KeyCode.P)) {
+        if (Input.GetKey(KeyCode.R)) {
             transform.Rotate(rotation * Time.deltaTime);
+        }
+        if (Input.GetKey(KeyCode.P)) {
+            MarchingCubesDispatcher.ClearRequests();
+            root.ResetMeshes();
         }
         currentMatrix = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one);
 
@@ -68,7 +76,7 @@ public class CelestialBody : MonoBehaviour {
                 Debug.LogError("INVALID TREE DETECTED");
             }
             invalidCheckTimer = 2.0f;
-            //Debug.Log(root.GetNumGameObjects(true));
+            Debug.Log(root.GetNumGameObjects(true));
         }
     }
 #endif
@@ -125,7 +133,7 @@ public class CelestialBody : MonoBehaviour {
     // simple example here
     // currently testing marching tetrahedra implementation
     // make sure to switch to proper world gen procedure that is visible from 0-32m world units
-#if true
+#if false
 
     ChunkObject go;
     ChunkObject go2;

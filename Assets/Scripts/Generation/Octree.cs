@@ -10,8 +10,7 @@ using System.Threading.Tasks;
 public class Octree {
 
     // front right - front left - back left - back right, then same order but for bottom layer
-    // start game and pause right at beginning to see layout better
-    public Octree[] children;   // would be cool to have all octree stored in same array somehow, or custom memory management like in dtb pools
+    public Octree[] children;
     // front left back right up down
     //public Octree[] neighbors = new Octree[6];
     public Octree parent;
@@ -22,7 +21,8 @@ public class Octree {
 
     Array3<Voxel> voxels; // need to save for vertex modification (should prob be called density)
 
-    Vector3 localPos;    // position of voxel grid (denotes the corner so it gets offset to remain centered)
+    // position of voxel grid (denotes the corner so it gets offset to remain centered)
+    Vector3 worldPos;
 
     public CelestialBody body;
 
@@ -34,9 +34,7 @@ public class Octree {
     public readonly float voxelSize;   // size of each voxel for this tree (in meters)
     public const float BASE_VOXEL_SIZE = 2.0f;  // highest depth has 2x2x2 meter voxels
 
-    public Bounds localArea; // bounding box for area this tree represents
-    // gonna be bad.. once planets can rotate lol
-    // will prob need to make own thing or have some extension that takes into account planet rotation
+    public Bounds localArea; // bounding box for area this tree represents (i think i fixed it so it can rotate?)
 
     public bool splitting = false; // set when a tree is waiting on list/currently being split
     bool dying = false;    // gets set when a child is merged into parent
@@ -54,7 +52,7 @@ public class Octree {
         this.depth = depth;
         this.branch = branch;
 
-        voxelSize = Mathf.Pow(2, (MAX_DEPTH - depth)) * BASE_VOXEL_SIZE;
+        voxelSize = Mathf.Pow(2, (10 - depth)) * BASE_VOXEL_SIZE;
         // *2 at end makes so highest depth has 2x2x2 meter voxels
         // so voxels are 2m^3 at max depth
         // then 4, 8, 16, etc
@@ -62,7 +60,7 @@ public class Octree {
 #if (SMOOTH_SHADING)
         pos = center - new Vector3(2, 2, 2) * voxelSize - Vector3.one * (SIZE / 2f) * voxelSize;
 #else
-        localPos = center - Vector3.one * (SIZE / 2f) * voxelSize;
+        worldPos = center - Vector3.one * (SIZE / 2f) * voxelSize;
 #endif
 
         localArea = new Bounds(center, Vector3.one * voxelSize * SIZE);
@@ -87,7 +85,7 @@ public class Octree {
         data.CalculateSharedNormals();  // todo figure out why this doesnt make it smoothed...
 #else
         if (createVoxels) {
-            voxels = WorldGenerator.CreateVoxels(SIZE + 1, depth, voxelSize, localPos);
+            voxels = WorldGenerator.CreateVoxels(SIZE + 1, depth, voxelSize, worldPos);
         }
 
         //if (!needsMesh) {
@@ -109,13 +107,7 @@ public class Octree {
     // dont actually need to build a gameobject if theres no mesh...
     // or at least have an empty object for the parent transform and dont attach components
     public void BuildGameObject(MeshData data) {
-        Mesh mesh = null;
 
-        if (data != null) {
-            mesh = data.CreateMesh();
-        } else {
-            //Debug.Log(++meshlessboys);
-        }
         obj = SplitManager.GetObject();
 
         //StringBuilder builder = new StringBuilder();
@@ -131,22 +123,44 @@ public class Octree {
 
 
         obj.go.transform.parent = body.transform;
-        obj.go.transform.localPosition = localPos;
+        obj.go.transform.localPosition = worldPos;
         obj.go.transform.localRotation = Quaternion.identity;
         //obj.go.transform.position = pos;
 
         obj.mr.material = body.terrainMat; // incase terrain is edited after
-        obj.mpb.SetVector(ShaderProps.localOffset, localPos);
+        obj.mpb.SetVector(ShaderProps.LocalOffset, worldPos);
         obj.UpdatePropBlock();
 
-        if (mesh == null) {
-            obj.ov.shouldDraw = false;
-        } else {
-            obj.ov.shouldDraw = true;
-            obj.mf.mesh = mesh;
-            obj.ov.init(depth, branch, localArea, body, depth == 0 ? Color.blue : Color.red);
-        }
+        AssignMesh(data);
 
+    }
+
+    public void BuildGameObjectCompute() {
+
+        obj = SplitManager.GetObject();
+
+        //StringBuilder builder = new StringBuilder();
+        //builder.Append("Tree ");
+        //builder.Append(depth);
+        //builder.Append(" ");
+        //builder.Append(center.x);
+        //builder.Append(" ");
+        //builder.Append(center.y);
+        //builder.Append(" ");
+        //builder.Append(center.z);
+        //obj.go.name = builder.ToString();
+
+
+        obj.go.transform.parent = body.transform;
+        obj.go.transform.localPosition = worldPos;
+        obj.go.transform.localRotation = Quaternion.identity;
+        //obj.go.transform.position = pos;
+
+        obj.mr.material = body.terrainMat; // incase terrain is edited after
+        //obj.mpb.SetVector(ShaderProps.LocalOffset, worldPos); // not sure what this was for
+        //obj.UpdatePropBlock();
+
+        AssignMesh(meshHolder);
     }
 
     public void Update() {
@@ -160,8 +174,10 @@ public class Octree {
                 }
             }
         } else if (!splitting && ShouldSplit()) {
-            splitting = true;
-            SplitManager.AddToSplitList(this);
+            //SplitManager.AddToSplitList(this);
+            SplitCompute();
+        } else if (splitting && childMeshReadies >= 8) {
+            SplitResolveCompute();
         } else {
             //GeoMorphLeaf();
             // if at max depth, have valid mesh, and close to cam then should have a collider
@@ -234,7 +250,7 @@ public class Octree {
 
     // faster version of set geomorph that only uses timeSinceCreation to determine blend amount
     // saves on a lot of distance calls
-    // only problem is when merging it pops back (need to have timer before merge to reblend?)
+    // only problem is when merging it pops back (need to have timer before merge to reblend? yaya)
     void SetGeomorph() {
         timeSinceCreation += Time.deltaTime;
         float t = timeSinceCreation / timeFullyCreated;
@@ -269,10 +285,58 @@ public class Octree {
         }, TaskCreationOptions.None);
     }
 
+    public void SplitCompute() {
+        splitting = true;
+        children = new Octree[8];
+        for (int i = 0; i < 8; ++i) {
+            Vector3 coff = childOffsets[i];
+            Octree child = new Octree(body, this, localArea.center + coff * SIZE * voxelSize * .25f, depth + 1, i);
+            MarchingCubesDispatcher.RequestChunk(child.worldPos, child.voxelSize, child.ReceiveMesh);
+            children[i] = child;
+        }
+    }
+
+    public void SplitResolveCompute() {
+        splitting = false;
+        if (!ShouldSplit() && depth > 0) {
+            // forget all children cuz theyve been created at this point
+            childMeshReadies = 0;
+            for (int i = 0; i < 8; i++) {
+                children[i] = null;
+            }
+            return;
+        }
+
+        for (int i = 0; i < 8; ++i) {
+            Octree c = children[i];
+            c.BuildGameObjectCompute();
+            c.obj.go.transform.parent = obj.go.transform;
+            c.SetGeomorph();
+        }
+        obj.mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        if (depth > 0) {
+            obj.ov.shouldDraw = true;
+        }
+        hasChildren = true;
+
+        timeSinceCreation = 0.0f;   // now used to fade yourself out
+        SetGeomorph();
+    }
+
+    public int childMeshReadies = 0;
+    MeshData meshHolder;
+    // the marching cubes dispatcher calls this once mesh is ready
+    public void ReceiveMesh(MeshData data) {
+        if (parent != null) {
+            parent.childMeshReadies++;
+        }
+        meshHolder = data;
+    }
+
     public void SplitResolve(MeshData[] data) {
         splitting = false;
         if (!ShouldSplit()) {
-            return;
+            return; // this is probably bad. because children elements are not null at this point but just forgetting about it
         }
 
         for (int i = 0; i < 8; ++i) {
@@ -336,6 +400,7 @@ public class Octree {
             children[i].OnGettingMerged();
             children[i] = null;
         }
+        childMeshReadies = 0;
         hasChildren = false;
         obj.mr.enabled = true;
         timeSinceCreation = timeFullyCreated;
@@ -363,7 +428,7 @@ public class Octree {
     public Octree FindOctree(Vector3 worldPos) {
         Vector3 point = WorldToLocal(body.transform, worldPos);
         if (!localArea.Contains(point)) {
-            Debug.LogWarning("FindOctree called outside of initial tree bounds");
+            //Debug.LogWarning("FindOctree called outside of initial tree bounds");
             return null;
         }
 
@@ -483,6 +548,40 @@ public class Octree {
             return c;
         }
         return 1;
+    }
+
+    // for GPU cubes. just throw out all ur meshes and request new ones
+    // nice for when you change material params
+    public void ResetMeshes() {
+        childMeshReadies = 0;
+        Object.Destroy(obj.mf.mesh);
+        MarchingCubesDispatcher.RequestChunk(worldPos, voxelSize, AssignMesh);
+        if (hasChildren) {
+            for (int i = 0; i < 8; ++i) {
+                children[i].ResetMeshes();
+            }
+        }
+    }
+
+    //void ResetMesh(MeshData data) {
+    //    if (data != null) { // could be empty mesh
+    //        AssignMesh(data.CreateMesh());
+    //    }
+    //}
+
+    void AssignMesh(MeshData data) {
+        if (data == null) {   // temp just to see 
+            obj.ov.shouldDraw = false;
+        } else {
+            Mesh mesh = data.CreateMesh();
+            if (mesh == null) {
+                obj.ov.shouldDraw = false;
+            } else {
+                obj.ov.shouldDraw = true;
+                obj.mf.mesh = data.CreateMesh();
+                obj.ov.init(depth, branch, worldPos, localArea, body, depth == 0 ? Color.blue : Color.red);
+            }
+        }
     }
 
 

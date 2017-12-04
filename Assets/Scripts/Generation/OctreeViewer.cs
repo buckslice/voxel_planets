@@ -5,6 +5,7 @@ public class OctreeViewer : MonoBehaviour {
 
     public int depth;
     public int branch;
+    public Vector3 offset;
     public bool shouldDraw = false;
     public Color color;
     Color origColor;
@@ -19,7 +20,9 @@ public class OctreeViewer : MonoBehaviour {
 
             //Matrix4x4 oldMat = Gizmos.matrix;
             // maybe calc this once in planet each frame
-            Gizmos.matrix = body.currentMatrix;
+            if (body != null && body.currentMatrix != null) {
+                Gizmos.matrix = body.currentMatrix;
+            }
 
             Gizmos.DrawWireCube(bounds.center, bounds.size);
 
@@ -51,10 +54,10 @@ public class OctreeViewer : MonoBehaviour {
         }
     }
 
-    public void init(int depth, int branch, Bounds bounds, CelestialBody body, Color color) {
-        shouldDraw = true;
+    public void init(int depth, int branch, Vector3 offset, Bounds bounds, CelestialBody body, Color color) {
         this.depth = depth;
         this.branch = branch;
+        this.offset = offset;
         this.bounds = bounds;
         this.body = body;
         this.color = color;

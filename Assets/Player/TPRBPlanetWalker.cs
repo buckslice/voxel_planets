@@ -172,7 +172,7 @@ public class TPRBPlanetWalker : MonoBehaviour {
         //}
 
         rigid.isKinematic = flyMode || tree == null || !tree.IsMaxDepth();
-        if (tree != null) {
+        if (tree != null && tree.obj != null) {
             tree.obj.ov.color = Color.green;
         }
 

@@ -58,11 +58,11 @@ public static class VoxelUtils {
         for (int x = 2; x < size - 2; x++) {
             for (int y = 2; y < size - 2; y++) {
                 for (int z = 2; z < size - 2; z++) {
-                    float dx = voxels[x + 1,y,z] - voxels[x - 1,y,z];
-                    float dy = voxels[x,y + 1,z] - voxels[x,y - 1,z];
-                    float dz = voxels[x,y,z + 1] - voxels[x,y,z - 1];
+                    float dx = voxels[x + 1, y, z] - voxels[x - 1, y, z];
+                    float dy = voxels[x, y + 1, z] - voxels[x, y - 1, z];
+                    float dz = voxels[x, y, z + 1] - voxels[x, y, z - 1];
 
-                    normals[x][y][z] = Vector3.Normalize(new Vector3(dx, dy, dz)/128.0f*voxelSize);
+                    normals[x][y][z] = Vector3.Normalize(new Vector3(dx, dy, dz) / 128.0f * voxelSize);
                 }
             }
         }
@@ -128,9 +128,15 @@ public class MeshData {
         }
     }
 
-    public MeshData(Vector3[] vertices, int[] indices) {
+    public MeshData(Vector3[] vertices, int[] triangles) {
         this.vertices = vertices;
-        this.triangles = indices;
+        this.triangles = triangles;
+    }
+
+    public MeshData(Vector3[] vertices, Vector3[] normals, int[] triangles) {
+        this.vertices = vertices;
+        this.normals = normals;
+        this.triangles = triangles;
     }
 
     //public MeshData(List<Vector3> vertices, List<int> triangles) {
@@ -299,6 +305,7 @@ public class MeshData {
             mesh.colors32 = colors;
         }
 
+        mesh.RecalculateBounds();   // didnt have this call before i dunno not sure if needed
         return mesh;
     }
 
@@ -324,7 +331,7 @@ public class MeshBuilder {
     private List<int> indices = new List<int>();
     private List<Vector3> vertices = new List<Vector3>();
     //private List<Vector3> normals = new List<Vector3>();
-    
+
     public void AddIndex(int i) {
         indices.Add(i);
     }
