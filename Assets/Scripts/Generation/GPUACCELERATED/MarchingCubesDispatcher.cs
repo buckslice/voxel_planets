@@ -20,7 +20,9 @@ public class MarchingCubesDispatcher : MonoBehaviour {
     int kernelMC;
     //int kernelTripleCount;  // unused in this mesh version
 
-    static List<ChunkRequest> requests;
+    //static List<ChunkRequest> jobList;
+
+    static FastPriorityQueue<ChunkRequest> queue;
 
     public Text countText;
 
@@ -39,7 +41,7 @@ public class MarchingCubesDispatcher : MonoBehaviour {
             return;
         }
 
-        requests = new List<ChunkRequest>();
+        queue = new FastPriorityQueue<ChunkRequest>(5000);
 
         kernelMC = MarchingCubesCS.FindKernel("MarchingCubes");
         //kernelTripleCount = MarchingCubesCS.FindKernel("TripleCount");
@@ -55,31 +57,47 @@ public class MarchingCubesDispatcher : MonoBehaviour {
 
     // Update is called once per frame
     void Update() {
-
-        // update workers
-        for (int i = 0; i < workers.Length; ++i) {
-            workers[i].Update();
-            if (workers[i].free && requests.Count > 0) {
-                // get request
-                int end = requests.Count - 1;
-                ChunkRequest req = requests[end];
-                requests.RemoveAt(end);
-
-                workers[i].Launch(req);
-            }
-        }
-        countText.text = "Requests: " + requests.Count;
+        UpdateWorkers();
+        countText.text = "Requests: " + queue.Count;
     }
 
-    public static void RequestChunk(Vector3 offset, float voxelSize, OnReceived callback) {
-        requests.Add(new ChunkRequest(offset, voxelSize, callback));
+    void OnPostRender() {   // can speed up async reading (if requested earlier in update can be ready by end of frame)
+        UpdateWorkers();    
+    }
+
+    void UpdateWorkers() {
+        for (int i = 0; i < workers.Length; ++i) {
+            workers[i].Update();
+            if (workers[i].free) {
+                // get request
+                ChunkRequest req = null;
+                while (queue.Count > 0) {
+                    req = queue.Dequeue();
+                    if (req.force || req.tree.parent.ShouldSplit()) {
+                        workers[i].Launch(req);
+                        break;
+                    } else {
+                        req.tree.splitting = false;
+                    }
+                }
+            }
+        }
+    }
+   
+
+    //public static void RequestChunk(Vector3 offset, float voxelSize, OnReceived callback) {
+    //    //jobList.Add(new ChunkRequest(offset, voxelSize, callback));
+    //}
+
+    public static void Enqueue(Octree tree, OnReceived callback, bool force = false) {
+        queue.Enqueue(new ChunkRequest(tree, callback, force), tree.GetSqrDistToCamFromCenter());
     }
 
     // clears chunk request list (tells each worker to get rid of next mesh if they are mid process)
     public static void ClearRequests() {
-        requests.Clear();
-        for(int i = 0; i < workers.Length; ++i) {
-            workers[i].trashNext = true;
+        queue.Clear();
+        for (int i = 0; i < workers.Length; ++i) {
+            workers[i].forgetNextResult = true;
         }
     }
 
@@ -93,14 +111,14 @@ public class MarchingCubesDispatcher : MonoBehaviour {
 
 public delegate void OnReceived(MeshData mesh);
 
-class ChunkRequest {
-    public Vector3 offset;
-    public float voxelSize;
+class ChunkRequest : FastPriorityQueueNode {
+    public Octree tree;
     public OnReceived callback;
-    public ChunkRequest(Vector3 offset, float voxelSize, OnReceived callback) {
-        this.offset = offset;
-        this.voxelSize = voxelSize;
+    public bool force;  // happens no matter what (no last minute checks)
+    public ChunkRequest(Octree tree, OnReceived callback, bool force) {
+        this.tree = tree;
         this.callback = callback;
+        this.force = force; 
     }
 }
 
@@ -128,7 +146,7 @@ class MarchingCubesWorker {
     int maxTris;
     int floatsPerTri;
 
-    public bool trashNext = false; 
+    public bool forgetNextResult = false;
 
     public MarchingCubesWorker(int resolution, int kernelMC, ComputeShader mccs, Material noiseMat) {
         this.resolution = resolution;
@@ -172,7 +190,7 @@ class MarchingCubesWorker {
 
     public void Launch(ChunkRequest cr) {
         free = false;
-        trashNext = false;
+        forgetNextResult = false;
         retrievedData = false;
         retrievedCount = false;
         cur = cr;   // save current chunk request
@@ -205,9 +223,7 @@ class MarchingCubesWorker {
             }
         }
         if (retrievedData && retrievedCount) {
-            if (trashNext) {
-                trashNext = false;
-            } else {
+            if (!forgetNextResult) {
                 cur.callback(BuildMeshData());
             }
 
@@ -228,11 +244,15 @@ class MarchingCubesWorker {
     void BlitNoise() {
         if (!density.IsCreated()) {    // texture can get uncreated in certain situations i think
             Debug.LogWarning("Something is wrong lol!");
+            return;
+        }
+        if (!noiseMat.SetPass(0)) { // in case shader complation error
+            return;
         }
 
-        noiseMat.SetVector(ShaderProps.LocalOffset, cur.offset);
+        noiseMat.SetVector(ShaderProps.LocalOffset, cur.tree.worldPos);
         noiseMat.SetFloat(ShaderProps.Resolution, resolution);
-        noiseMat.SetFloat(ShaderProps.Size, cur.voxelSize);
+        noiseMat.SetFloat(ShaderProps.Size, cur.tree.voxelSize);
 
         GL.PushMatrix();
         GL.LoadOrtho();
@@ -304,7 +324,7 @@ class MarchingCubesWorker {
             float f5 = data[i * 6 + 5];
 
             //verts[i] = (new Vector3(f0, f1, f2)+Vector3.one*0.5f) * resolution * voxelSize;
-            verts[i] = (new Vector3(f0, f1, f2)) * resolution * cur.voxelSize;
+            verts[i] = (new Vector3(f0, f1, f2)) * resolution * cur.tree.voxelSize;
             norms[i] = new Vector3(f3, f4, f5);
 
             tris[i] = i;

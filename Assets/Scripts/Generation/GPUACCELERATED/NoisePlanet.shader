@@ -46,7 +46,6 @@ Shader "Noise/NoisePlanet"
     {
         _Octaves("Octaves", Float) = 5.0
         _Frequency("Frequency", Float) = 1.0
-        //_Amplitude("Amplitude", Float) = 1.0
         _Lacunarity("Lacunarity", Float) = 2.0
         _Persistence("Persistence", Float) = 0.5
         _Offset("Offset", Vector) = (0.0, 0.0, 0.0, 0.0)
@@ -55,20 +54,21 @@ Shader "Noise/NoisePlanet"
     CGINCLUDE
 
     #include "UnityCustomRenderTexture.cginc"
-    #include "NoiseLib.cginc"
+    #include "Assets/Shaders/Includes/Noise.cginc"
+    #include "Assets/Shaders/Includes/Shapes.cginc"
 
     //#pragma target 5.0
 
+    // properties
     fixed _Octaves;
     float _Frequency;
-    float _Amplitude;
     float3 _Offset;
+    float _Lacunarity;
+    float _Persistence;
+    // uniforms set thru code (uniform not required but nice to have for clarity)
     uniform float3 _LocalOffset;
     uniform float _Resolution;
 	uniform float _Size;
-
-    float _Lacunarity;
-    float _Persistence;
 
     // User facing vertex to fragment structure for initialization materials
     // WOW pretty sure its bugged  so i had to recreate the init stuff here
@@ -96,11 +96,15 @@ Shader "Noise/NoisePlanet"
 		// texels are positioned at pixel center so interpolates from (0.5 / size) -> (1.0 - 0.5 / size) instead of 0 to 1 as we want
 		// so basically inverselerp them to get it back to 0 to 1
 		float resmm = _Resolution - 1;
-		o.texcoord.x = _Resolution / resmm * v.texcoord.x - 1.0/(2.0*resmm);
-		o.texcoord.y = _Resolution / resmm * v.texcoord.y - 1.0/(2.0*resmm);
+		//o.texcoord.x = _Resolution / resmm * v.texcoord.x - 1.0/(2.0*resmm);
+		//o.texcoord.y = _Resolution / resmm * v.texcoord.y - 1.0/(2.0*resmm);
+        
+        o.texcoord.x = _Resolution / resmm * v.texcoord.x - 1.0/(2.*resmm);
+        o.texcoord.y = _Resolution / resmm * v.texcoord.y - 1.0/(2.*resmm);
 		o.texcoord.z = v.texcoord.z;	// this is already done correctly in the blitting function
+        
         o.texcoord *= _Resolution * _Size; // voxelSize
-        o.texcoord += _LocalOffset;
+        o.texcoord += _LocalOffset + _Offset;
         // at this point texcoord is basically worldpos into frag 'density' function
         return o;
     }
@@ -108,19 +112,25 @@ Shader "Noise/NoisePlanet"
     //v2f_customrendertexture
     float frag(v2f_init_customrendertexture2 IN) : SV_Target
     {
-        //float h = SimplexBillowed(IN.texcoord, _Octaves, _Offset+_LocalOffset, _Frequency, _Amplitude, _Lacunarity, _Persistence);
+        float f = 0.0;
 
+        //float h = SimplexBillowed(IN.texcoord, _Octaves, _Offset+_LocalOffset, _Frequency, _Amplitude, _Lacunarity, _Persistence);
         //float curl = fbm(IN.texcoord + _Offset + _LocalOffset, 4, 0.1, 0.55, 2.0)*.5;
         //float h = ridged(IN.texcoord + curl + _Offset + _LocalOffset, _Octaves, _Frequency, _Persistence, _Lacunarity);
         //return h;
 
-        float rad = 2000.0;
-        float3 p = IN.texcoord;
-        float s = 5500.0;
-        p = Repeat(p, float3(s,s,s));
-        float f = Sphere(p, float3(0.0,0.0,0.0), rad);
-        //float g = Sphere(p, float3(5000., 0., 0.), rad);
-        //return Intersection(f, g);
+        // bunch of dumb spheres
+        //float rad = 2000.0;
+        //float3 p = IN.texcoord;
+        //float s = 5500.0;
+        //p = Repeat(p, float3(s,s,s));
+        //f = Sphere(p, float3(0.0,0.0,0.0), rad);
+
+        float r = 14000.0;
+        f = Sphere(IN.texcoord, float3(0.0, 0.0, 0.0), r);
+        float curl = fbm(IN.texcoord + _Offset, 4, 0.01, 0.55, 2.0)*10.;
+        float n = ridged(IN.texcoord + curl + _Offset, _Octaves, _Frequency, _Persistence, _Lacunarity);
+        f += n * 100.0; 
 
         return f;
     }

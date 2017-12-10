@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 
 public class CelestialBody : MonoBehaviour {
 
@@ -18,6 +19,7 @@ public class CelestialBody : MonoBehaviour {
     Vector3 rotation;
 
     public Matrix4x4 currentMatrix = new Matrix4x4();
+    public Text countText;
 
 #if true
     // Use this for initialization
@@ -30,11 +32,12 @@ public class CelestialBody : MonoBehaviour {
 
         // not sure if this is great way to do it
         root.BuildGameObjectCompute();
-        root.SplitCompute();
+        MarchingCubesDispatcher.Enqueue(root, root.AssignMesh, true);
+        //root.SplitCompute();
 
         // calculating split levels by hand now
         // too hard to get right witha formula to look good both on surface and
-        // from high up in space
+        // from high up in space (may need to change strat, like dynamic split more chunks based on total num tris)
         Debug.Assert(splitLevels.Length >= Octree.MAX_DEPTH + 1);
         //splitLevels = new float[Octree.MAX_DEPTH + 1];
         //int len = splitLevels.Length;
@@ -76,7 +79,9 @@ public class CelestialBody : MonoBehaviour {
                 Debug.LogError("INVALID TREE DETECTED");
             }
             invalidCheckTimer = 2.0f;
-            Debug.Log(root.GetNumGameObjects(true));
+            int num = root.GetNumGameObjects(false);
+            countText.text = "Trees: " + num;
+            //Debug.Log(root.GetNumGameObjects(true));
         }
     }
 #endif

@@ -22,7 +22,7 @@ public class Octree {
     Array3<Voxel> voxels; // need to save for vertex modification (should prob be called density)
 
     // position of voxel grid (denotes the corner so it gets offset to remain centered)
-    Vector3 worldPos;
+    public Vector3 worldPos;
 
     public CelestialBody body;
 
@@ -128,8 +128,8 @@ public class Octree {
         //obj.go.transform.position = pos;
 
         obj.mr.material = body.terrainMat; // incase terrain is edited after
-        obj.mpb.SetVector(ShaderProps.LocalOffset, worldPos);
-        obj.UpdatePropBlock();
+        //obj.mpb.SetVector(ShaderProps.LocalOffset, worldPos);
+        //obj.UpdatePropBlock();
 
         AssignMesh(data);
 
@@ -291,7 +291,7 @@ public class Octree {
         for (int i = 0; i < 8; ++i) {
             Vector3 coff = childOffsets[i];
             Octree child = new Octree(body, this, localArea.center + coff * SIZE * voxelSize * .25f, depth + 1, i);
-            MarchingCubesDispatcher.RequestChunk(child.worldPos, child.voxelSize, child.ReceiveMesh);
+            MarchingCubesDispatcher.Enqueue(child, child.ReceiveMesh);
             children[i] = child;
         }
     }
@@ -355,10 +355,10 @@ public class Octree {
         SetGeomorph();
     }
 
-    //public float GetSqrDistToCamFromArea() {
-    //    //return area.SqrDistance(body.cam.position);
-    //    return area.SqrDistance(body.player);
-    //}
+    public float GetSqrDistToCamFromArea() {
+        //return area.SqrDistance(body.cam.position);
+        return localArea.SqrDistance(body.player);
+    }
 
     // this could be made into a lookup
     // just calculate distance to planet once then should be able to figure out 
@@ -554,8 +554,11 @@ public class Octree {
     // nice for when you change material params
     public void ResetMeshes() {
         childMeshReadies = 0;
-        Object.Destroy(obj.mf.mesh);
-        MarchingCubesDispatcher.RequestChunk(worldPos, voxelSize, AssignMesh);
+        splitting = false;
+        if (obj.mf.mesh != null) {
+            Object.Destroy(obj.mf.mesh);
+        }
+        MarchingCubesDispatcher.Enqueue(this, AssignMesh, true);
         if (hasChildren) {
             for (int i = 0; i < 8; ++i) {
                 children[i].ResetMeshes();
@@ -569,7 +572,7 @@ public class Octree {
     //    }
     //}
 
-    void AssignMesh(MeshData data) {
+    public void AssignMesh(MeshData data) {
         if (data == null) {   // temp just to see 
             obj.ov.shouldDraw = false;
         } else {
