@@ -9,6 +9,7 @@ public class RaymarchGeneric : SceneViewFilter {
     public float rayMarchMaxDist = 64;
     public Texture2D matColorRamp;
     public Texture2D perfColorRamp;
+    public Texture2D densColorRamp;
     public bool debugPerformance = false;
     public Color mainColor = new Color(1,1,1,1);
 
@@ -92,6 +93,7 @@ public class RaymarchGeneric : SceneViewFilter {
         EffectMaterial.SetColor("_Color", mainColor);
         EffectMaterial.SetTexture("_ColorRamp_Material", matColorRamp);
         EffectMaterial.SetTexture("_ColorRamp_PerfMap", perfColorRamp);
+        EffectMaterial.SetTexture("_ColorRamp_Density", densColorRamp);
 
         EffectMaterial.SetFloat("_DrawDistance", rayMarchMaxDist);
 

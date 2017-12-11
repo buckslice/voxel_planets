@@ -43,10 +43,12 @@ Shader "Hidden/RaymarchGeneric"
     //uniform float4x4 _MatTorus_InvModel;
     uniform sampler2D _ColorRamp_Material;
     uniform sampler2D _ColorRamp_PerfMap;
+    uniform sampler2D _ColorRamp_Density;
 
     uniform float _DrawDistance;
 
-    static const int MAX_STEPS = 100;
+    static const int MAX_STEPS = 256;
+    static const float PRECISION = 0.0001;
 
     struct appdata {
         // Remember, the z value here contains the index of _FrustumCornersES to use
@@ -99,26 +101,159 @@ Shader "Hidden/RaymarchGeneric"
     //    return opSub(s, t);
     //}
 
-    float2 map(float3 pos) {
+    float2 map(float3 p) {
         //float3 rpos = opRep(pos, float3(1.1, 10, 1.1));
-        float3 rpos = opRep(pos, float3(1.1, 10+sin(_Time.y+pos.x*0.1), 1.1));
-        //float3 rpos = float3(opRep1(pos.x, 1.1), pos.y+sin(_Time.y + pos.x), opRep1(pos.z, 1.1));
-        float2 s = float2(sdSphere(rpos, float3(0, 0, 0), 0.5), 0.5);
-        float t = sdTorus(rpos, float3(0, 0, 0), float2(.4, .2));
-        return float2(t, s.y);
+        //float3 rpos = opRep(pos, float3(1.1, 10+sin(_Time.y+pos.x*0.1), 1.1));
+        float2 d = float2(
+            sdPlane(p, float4(0, 1, 0, 0.0)),
+            0.5);
+
+        //float x = opMod1(p.x, 5.1);
+        //float z = opMod1(p.z, 5.1);
+        ////
+        //float3 rpos = float3(p.x, p.y, p.z);
+        ////float3 rpos = float3(opRep1(pos.x, 1.1), pos.y+sin(_Time.y + pos.x), opRep1(pos.z, 1.1));
+        ////float2 s = float2(sdSphere(rpos, float3(0, 0, 0), 0.5), 0.4);
+        //float2 t = float2(
+        //    sdTorus(rpos, float3(0, .2, 0), float2(2., .2)),
+        //    (sin(x*z*0.01) + 1.0)*0.5);
+        //d = opUnion(d, t);
+
+        float x = p.x;
+        float z = p.z;
+        //x = opRep1(p.x, 20.0); 
+        //z = opRep1(p.z, 20.0);
+
+        //x = floor(x + 0.5);
+        //z = floor(z + 0.5);
+
+        //float2 b = float2(
+        //    sdBox(float3(p.x,p.y,p.z), float3(3, 10, 5)),
+        //    0.7);
+        //d = opUnion(d, b);
+        //float c = (sin(x) + 1.0) / 2.;
+
+        float y = p.y;
+        //float y = p.y + sin(p.x*0.1 + _Time.y)*5.0;
+
+        d = opUnion(d,float2(sdSphere(float3(x,y,z), float3(0, 4, 0), 5.0),1.7));
+        //d = float2(sdSphere(float3(p.x, p.y, p.z), float3(0, 0, 0), 5.0), 0.5);
+
+
+        return float2(d.x,d.y);
     }
 
     float3 calcNormal(in float3 pos) {
-        const float2 eps = float2(0.001, 0.0);
-        // The idea here is to find the "gradient" of the distance field at pos
-        // Remember, the distance field is not boolean - even if you are inside an object
-        // the number is negative, so this calculation still works.
-        // Essentially you are approximating the derivative of the distance field at this point.
-        float3 nor = float3(
-            map(pos + eps.xyy).x - map(pos - eps.xyy).x,
-            map(pos + eps.yxy).x - map(pos - eps.yxy).x,
-            map(pos + eps.yyx).x - map(pos - eps.yyx).x);
-        return normalize(nor);
+        // some iq witchcraft
+        float2 e = float2(1.0, -1.0)*0.5773*0.0005;
+        return normalize(
+            e.xyy*map(pos + e.xyy).x +
+            e.yyx*map(pos + e.yyx).x +
+            e.yxy*map(pos + e.yxy).x +
+            e.xxx*map(pos + e.xxx).x
+        );
+
+        //const float2 eps = float2(0.001, 0.0);
+        //// The idea here is to find the "gradient" of the distance field at pos
+        //// Remember, the distance field is not boolean - even if you are inside an object
+        //// the number is negative, so this calculation still works.
+        //// Essentially you are approximating the derivative of the distance field at this point.
+        //float3 nor = float3(
+        //    map(pos + eps.xyy).x - map(pos - eps.xyy).x,
+        //    map(pos + eps.yxy).x - map(pos - eps.yxy).x,
+        //    map(pos + eps.yyx).x - map(pos - eps.yyx).x);
+        //return normalize(nor);
+    }
+
+    float calcAO(float3 p, float3 n) {
+        float occ = 0.0;
+        float sca = 1.0;
+        for (int i = 0; i < 5; ++i) {
+            float hr = 0.01 + 0.12 * float(i) / 4.0;
+            float3 aopos = n * hr + p;
+            float dd = map(aopos).x;
+            occ += -(dd - hr)*sca;
+            sca *= 0.95;
+        }
+        return clamp(1.0 - 3.0 * occ, 0.0, 1.0);
+    }
+
+    float softShadow(float3 ro, float3 rd, float mint, float tmax) {
+        float res = 1.0;
+        float t = mint;
+        for (int i = 0; i < 16; ++i) {
+            float h = map(ro + rd*t).x;
+            res = min(res, 8.0 * h / t);
+            t += clamp(h, 0.02, 0.10);
+            if (h < 0.001 || t > tmax) break;
+        }
+        return clamp(res, 0.0, 1.0);
+    }
+
+
+    float2 castRay(float3 ro, float3 rd, float d) {
+        float t = 0.0;  // length of ray
+        float m = -1.0;
+        for (int i = 0; i < MAX_STEPS; ++i) {
+            if (t >= d || t > _DrawDistance) {
+                return float2(t, -1.0);
+            }
+            float2 r = map(ro + rd*t);
+            if (r.x < PRECISION * t) {
+                return float2(t, r.y);
+            }
+
+            t += r.x;
+            m = r.y;
+        }
+        // these two options below only get called if i hits the max
+        // basically both options have artifacts so swag ur pick
+        return float2(t, m);      // returns whatever last mat was
+        //return float2(t, -1.0); // returns blank if ray runs out
+    }
+
+    fixed4 render(float3 ro, float3 rd, float d) {
+        fixed4 col = fixed4(0, 0, 0, 0);
+        float2 r = castRay(ro, rd, d);
+        float t = r.x;
+        float m = r.y;
+        if (m > -0.5) { // if not should just be transparent
+            float3 p = ro + rd*t;
+
+            // using tex2Dlod since tex2D needs to calculate derivatives to figure out mips but this manually defines them
+            if (m < 1.0) {
+                float g = map(p).x / 5.;
+                col.xyz = tex2Dlod(_ColorRamp_Density, float4(1.0-d, 0, 0, 0)).xyz;
+
+            } else {
+                col.xyz = tex2Dlod(_ColorRamp_Material, float4(m - 1.0, 0, 0, 0)).xyz;
+                float3 n = calcNormal(p);
+                float light = clamp(dot(-_LightDir.xyz, n), 0.0, 1.0); // unclamped looks cool kinda (shadows go negative color)
+                //light *= calcAO(p, n);
+                //light *= softShadow(p, light, 0.02, 2.5);
+                col.xyz *= light;
+            }
+            col.w = 1.0;
+        }
+        return fixed4(clamp(col, 0.0, 1.0));
+    }
+
+    float2 castRayPerf(float3 ro, float3 rd, float d) {
+        float t = 0.0;
+        for (int i = 0; i < MAX_STEPS; ++i) {
+            float2 r = map(ro + rd*t);
+            if (r.x < PRECISION * t || t > _DrawDistance || t >= d) {
+                return float2(t, (float) i / MAX_STEPS);
+            }
+            t += r.x;
+        }
+        return float2(t, 1.0);
+    }
+    fixed4 renderPerf(float3 ro, float3 rd, float d) {
+        float2 r = castRayPerf(ro, rd, d);
+        float t = r.x;
+        float m = r.y;
+        return fixed4(tex2Dlod(_ColorRamp_PerfMap, float4(m, 0, 0, 0)).xyz, 1);
     }
 
     // Raymarch along given ray
@@ -138,18 +273,21 @@ Shader "Hidden/RaymarchGeneric"
             float3 p = ro + rd * t; // World space position of sample
             float2 d = map(p);		// Sample of distance field (see map())
                                     
-            if (d.x < 0.001) {      // If the sample <= 0, we have hit something (see map()).
-                float3 n = calcNormal(p);
-                float light = max(dot(-_LightDir.xyz, n),0.0); // unclamped looks cool kinda (shadows go negative color)
-                // using tex2Dlod since tex2D needs to calculate derivatives to figure out mips but this manually defines them
+            if (d.x < PRECISION * t) {      // If the sample <= 0, we have hit something (see map()).
+
+                return render(ro, rd, t);
+
+                //float3 n = calcNormal(p);
+                //float light = max(dot(-_LightDir.xyz, n),0.0); // unclamped looks cool kinda (shadows go negative color)
+                //// using tex2Dlod since tex2D needs to calculate derivatives to figure out mips but this manually defines them
                 //fixed3 col = tex2Dlod(_ColorRamp_Material, float4(d.y, 0, 0, 0)).xyz * light;
-                fixed3 col = fixed3(.95, .65, .4) * light;  // omg donuts yes
-                //fog = t / (_DrawDistance*0.5);
-                //fog = saturate(1.0 - fog*fog);
-                float fog = t / _DrawDistance;
-                fog = 1.0-saturate(fog*2.);
-                
-                return fixed4(col, fog);
+                ////fixed3 col = fixed3(.95, .65, .4) * light;  // omg donuts yes
+
+                ////float fog = t / _DrawDistance;
+                ////fog = 1.0-saturate(fog*2.);
+                ////return fixed4(col, fog);
+
+                //return fixed4(col, 1.0);
 
                 //return fixed4(_Color.rgb * light, 1.0);
             }
@@ -175,7 +313,7 @@ Shader "Hidden/RaymarchGeneric"
 
             // If the sample <= 0, we have hit something (see map()).
             // If t > drawdist, we can safely bail because we have reached the max draw distance
-            if (d.x < 0.001 || t > _DrawDistance) {
+            if (d.x < PRECISION * t || t > _DrawDistance) {
                 // Simply return the number of steps taken, mapped to a color ramp.
                 float perf = (float)i / MAX_STEPS;
                 return fixed4(tex2Dlod(_ColorRamp_PerfMap, float4(perf,0,0,0)).xyz, 1);
@@ -203,7 +341,7 @@ Shader "Hidden/RaymarchGeneric"
 
         // Convert from depth buffer (eye space) to true distance from camera
         // This is done by multiplying the eyespace depth by the length of the "z-normalized"
-        // ray (see vert()).  Think of similar triangles: the view-space z-distance between a point
+        // ray (see vert()). Think of similar triangles: the view-space z-distance between a point
         // and the camera is proportional to the absolute distance.
         float depth = LinearEyeDepth(tex2D(_CameraDepthTexture, duv).r);
         depth *= length(i.ray);
@@ -211,13 +349,15 @@ Shader "Hidden/RaymarchGeneric"
         fixed3 col = tex2D(_MainTex,i.uv);
 
     #if DEBUG_PERFORMANCE
-        fixed4 add = raymarch_perftest(ro, rd, depth);
+        //fixed4 add = raymarch_perftest(ro, rd, depth);
+        fixed4 add = renderPerf(ro, rd, depth);
     #else
-        fixed4 add = raymarch(ro, rd, depth);
+        //fixed4 add = raymarch(ro, rd, depth);
+        fixed4 add = render(ro, rd, depth);
     #endif
 
         // Returns final color using alpha blending
-        return fixed4(col*(1.0 - add.w) + add.xyz * add.w,1.0);
+        return fixed4(col*(1.0 - add.w) + add.xyz * add.w, 1.0);
     }
         ENDCG
     }
