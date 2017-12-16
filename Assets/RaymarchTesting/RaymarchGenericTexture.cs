@@ -2,16 +2,48 @@
 
 [ExecuteInEditMode]
 [RequireComponent(typeof(Camera))]
-[AddComponentMenu("Effects/Raymarch (Generic Complete)")]
-public class RaymarchGeneric : SceneViewFilter {
+public class RaymarchGenericTexture : SceneViewFilter {
     public Transform lightTransform;
     public Shader effectShader;
     public float rayMarchMaxDist = 64;
     public Texture2D matColorRamp;
     public Texture2D perfColorRamp;
     public Texture2D densColorRamp;
+    Texture3D volume;
     public bool debugPerformance = false;
-    public Color mainColor = new Color(1,1,1,1);
+    public Color mainColor = new Color(1, 1, 1, 1);
+
+    void Start() {
+        int size = 64;
+        volume = new Texture3D(size, size, size, TextureFormat.RFloat, false);
+        volume.filterMode = FilterMode.Point;    // or point to see the voxels more clearly
+        volume.wrapMode = TextureWrapMode.Clamp;
+        Color[] pixels = new Color[size * size * size];
+
+        int i = 0;
+        for(int x = 0; x < size; ++x) {
+            for(int y = 0; y < size; ++y) {
+                for (int z = 0; z < size; ++z, ++i) {
+                    //return length(worldPos - origin) - radius;
+                    Vector3 wp = new Vector3(x, y, z);
+                    Vector3 or = new Vector3(32, 32, 32);
+                    float rad = 20.0f;
+                    float dist = Vector3.Magnitude(wp - or) - rad;
+                    dist += Noise.Billow(wp, 4, 0.01f)*5.0f;
+
+                    // not really a true distance field this way (above might not be either but closer at least)
+                    // basically the worse the distance field the more work for raymarching i think
+                    //dist = Noise.Billow(wp, 4, 0.01f) * -1.0f;
+
+                    //dist = Mathf.Floor(dist);
+                    //dist = Mathf.Ceil(dist);
+                    pixels[i] = new Color(dist, 1.0f, 1.0f, 1.0f);
+                }
+            }
+        }
+        volume.SetPixels(pixels);
+        volume.Apply();
+    }
 
     public Material EffectMaterial {
         get {
@@ -91,9 +123,18 @@ public class RaymarchGeneric : SceneViewFilter {
         //EffectMaterial.SetMatrix("_MatTorus_InvModel", MatTorus.inverse);
 
         EffectMaterial.SetColor("_Color", mainColor);
-        EffectMaterial.SetTexture("_ColorRamp_Material", matColorRamp);
-        EffectMaterial.SetTexture("_ColorRamp_PerfMap", perfColorRamp);
-        EffectMaterial.SetTexture("_ColorRamp_Density", densColorRamp);
+        if (matColorRamp) {
+            EffectMaterial.SetTexture("_ColorRamp_Material", matColorRamp);
+        }
+        if (perfColorRamp) {
+            EffectMaterial.SetTexture("_ColorRamp_PerfMap", perfColorRamp);
+        }
+        if (densColorRamp) {
+            EffectMaterial.SetTexture("_ColorRamp_Density", densColorRamp);
+        }
+        if (volume) {
+            EffectMaterial.SetTexture("_Volume", volume);
+        }
 
         EffectMaterial.SetFloat("_DrawDistance", rayMarchMaxDist);
 

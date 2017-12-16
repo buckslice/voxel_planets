@@ -1,4 +1,6 @@
 ﻿
+//http://flafla2.github.io/2016/10/01/raymarching.html
+
 Shader "Hidden/RaymarchGeneric"
 {
     Properties
@@ -101,12 +103,9 @@ Shader "Hidden/RaymarchGeneric"
     //    return opSub(s, t);
     //}
 
-    float2 map(float3 p) {
+    float2 mapr(float3 p) {
         //float3 rpos = opRep(pos, float3(1.1, 10, 1.1));
         //float3 rpos = opRep(pos, float3(1.1, 10+sin(_Time.y+pos.x*0.1), 1.1));
-        float2 d = float2(
-            sdPlane(p, float4(0, 1, 0, 0.0)),
-            0.5);
 
         //float x = opMod1(p.x, 5.1);
         //float z = opMod1(p.z, 5.1);
@@ -121,30 +120,40 @@ Shader "Hidden/RaymarchGeneric"
 
         float x = p.x;
         float z = p.z;
-        //x = opRep1(p.x, 20.0); 
-        //z = opRep1(p.z, 20.0);
+        x = opRep1(p.x, 40.0); 
+        z = opRep1(p.z, 40.0);
+        
+        float t = sin(_Time.y)*10.0;
+        //t = 0.0;
 
-        //x = floor(x + 0.5);
-        //z = floor(z + 0.5);
-
-        //float2 b = float2(
-        //    sdBox(float3(p.x,p.y,p.z), float3(3, 10, 5)),
-        //    0.7);
-        //d = opUnion(d, b);
+        float2 d = float2(sdBox(float3(p.x+10,p.y-6,p.z), float3(3, 5, 5)),  1.2);
         //float c = (sin(x) + 1.0) / 2.;
 
-        float y = p.y;
-        //float y = p.y + sin(p.x*0.1 + _Time.y)*5.0;
+        float3 mp = float3(x, p.y + t, z);
+		float sp = sdSphere(mp, float3(0, 0, 0), 5.0);
+		//float to = sdTorus(mp, float3(0,0,0), float2(5.0,3.0));
+		//float s = opSubtract(sp, to);
+		float s = sp;
+        //mp.y += 10.0;
+        //float sq = udBox(mp, float3(10, 8, 10));
+        //s = opIntersect(s,sq);
 
-        d = opUnion(d,float2(sdSphere(float3(x,y,z), float3(0, 4, 0), 5.0),1.7));
-        //d = float2(sdSphere(float3(p.x, p.y, p.z), float3(0, 0, 0), 5.0), 0.5);
-
+        d = opUnion(d,float2(s, 1.5));
+        //d = opUnion(sdPlane(p, float4(0, -1, 0, 0.0)), 0.5);
+        //d = opUnion(d,float2(sdSphere(float3(p.x,p.y,p.z), float3(0,0,0), 5.0+y),  1.7));
 
         return float2(d.x,d.y);
     }
 
+	float2 map(float3 p) {
+		// this plane is special and is used to draw the density field
+        float2 d = float2(sdPlane(p, float4(0, 1, 0, 0.0)), 0.5);
+		return opUnion(d, mapr(p));
+        //return mapraw(p);
+    }
+
     float3 calcNormal(in float3 pos) {
-        // some iq witchcraft
+        // some iq witchcraft seems to do the same thing
         float2 e = float2(1.0, -1.0)*0.5773*0.0005;
         return normalize(
             e.xyy*map(pos + e.xyy).x +
@@ -190,21 +199,40 @@ Shader "Hidden/RaymarchGeneric"
         return clamp(res, 0.0, 1.0);
     }
 
+	float hardShadow(float3 ro, float3 rd, float mint, float maxt){
+		for(float t = mint; t < maxt;t+=0){
+			float h = map(ro + rd*t);
+			if(h < 0.001){
+				return 0.0;
+			}
+			t += h;
+		}
+		return 1.0;
+	}
 
+    // cast a ray and return distance and material of the surface
+    // ro: ray origin
+    // rd: ray direction
+    // d: unity depth buffer
     float2 castRay(float3 ro, float3 rd, float d) {
         float t = 0.0;  // length of ray
         float m = -1.0;
+
         for (int i = 0; i < MAX_STEPS; ++i) {
+            // if past the depth buffer, or exceeded the max draw distance, stop and return a transparent material
+            // this way raymarched objects and traditional meshes can coexist (with depth)
             if (t >= d || t > _DrawDistance) {
                 return float2(t, -1.0);
             }
             float2 r = map(ro + rd*t);
-            if (r.x < PRECISION * t) {
+            if (r.x < PRECISION * t) {  // close enough so return current distance and material
                 return float2(t, r.y);
             }
 
+            // If the sample > 0, we haven't hit anything yet so we should march forward
+            // by the minimum distance possible to intersect an object (see map()).
             t += r.x;
-            m = r.y;
+            m = r.y;    // remember material of closest
         }
         // these two options below only get called if i hits the max
         // basically both options have artifacts so swag ur pick
@@ -219,25 +247,32 @@ Shader "Hidden/RaymarchGeneric"
         float m = r.y;
         if (m > -0.5) { // if not should just be transparent
             float3 p = ro + rd*t;
-
+            float3 n = calcNormal(p);
+			float light = clamp(dot(-_LightDir.xyz, n), 0.0, 1.0); // unclamped looks cool kinda (shadows go negative color)
             // using tex2Dlod since tex2D needs to calculate derivatives to figure out mips but this manually defines them
+			// oh actually advantage of using castray function is dont get those warnings cuz not in for loop anymore
             if (m < 1.0) {
-                float g = map(p).x / 5.;
-                col.xyz = tex2Dlod(_ColorRamp_Density, float4(1.0-d, 0, 0, 0)).xyz;
-
+                float g = mapr(p).x / 10.;
+				col.xyz = tex2D(_ColorRamp_Density, float2(g, .9375 - step(.55,g)*0.6)).xyz;
             } else {
                 col.xyz = tex2Dlod(_ColorRamp_Material, float4(m - 1.0, 0, 0, 0)).xyz;
-                float3 n = calcNormal(p);
-                float light = clamp(dot(-_LightDir.xyz, n), 0.0, 1.0); // unclamped looks cool kinda (shadows go negative color)
+
                 //light *= calcAO(p, n);
                 //light *= softShadow(p, light, 0.02, 2.5);
                 col.xyz *= light;
             }
+			//col.xyz *= softShadow(p, light, 0.02, 2.5);
+			//col.xyz *= hardShadow(p, light, 0.02, 2.5);
             col.w = 1.0;
         }
         return fixed4(clamp(col, 0.0, 1.0));
     }
 
+    // Modified castRay that displays a heatmap of ray sample counts
+    // Useful for performance testing and analysis
+    // ro: ray origin
+    // rd: ray direction
+    // d: unity depth buffer
     float2 castRayPerf(float3 ro, float3 rd, float d) {
         float t = 0.0;
         for (int i = 0; i < MAX_STEPS; ++i) {
@@ -254,76 +289,6 @@ Shader "Hidden/RaymarchGeneric"
         float t = r.x;
         float m = r.y;
         return fixed4(tex2Dlod(_ColorRamp_PerfMap, float4(m, 0, 0, 0)).xyz, 1);
-    }
-
-    // Raymarch along given ray
-    // ro: ray origin
-    // rd: ray direction
-    // s: unity depth buffer
-    fixed4 raymarch(float3 ro, float3 rd, float s) {
-        float t = 0; // current distance traveled along ray
-        for (int i = 0; i < MAX_STEPS; ++i) {
-            // If we run past the depth buffer, or if we exceed the max draw distance,
-            // stop and return nothing (transparent pixel).
-            // this way raymarched objects and traditional meshes can coexist.
-            if (t >= s || t > _DrawDistance) {
-                return fixed4(0, 0, 0, 0);
-            }
-
-            float3 p = ro + rd * t; // World space position of sample
-            float2 d = map(p);		// Sample of distance field (see map())
-                                    
-            if (d.x < PRECISION * t) {      // If the sample <= 0, we have hit something (see map()).
-
-                return render(ro, rd, t);
-
-                //float3 n = calcNormal(p);
-                //float light = max(dot(-_LightDir.xyz, n),0.0); // unclamped looks cool kinda (shadows go negative color)
-                //// using tex2Dlod since tex2D needs to calculate derivatives to figure out mips but this manually defines them
-                //fixed3 col = tex2Dlod(_ColorRamp_Material, float4(d.y, 0, 0, 0)).xyz * light;
-                ////fixed3 col = fixed3(.95, .65, .4) * light;  // omg donuts yes
-
-                ////float fog = t / _DrawDistance;
-                ////fog = 1.0-saturate(fog*2.);
-                ////return fixed4(col, fog);
-
-                //return fixed4(col, 1.0);
-
-                //return fixed4(_Color.rgb * light, 1.0);
-            }
-
-            // If the sample > 0, we haven't hit anything yet so we should march forward
-            // We step forward by distance d, because d is the minimum distance possible to intersect
-            // an object (see map()).
-            t += d.x;
-        }
-        return fixed4(0,0,0,0);
-    }
-
-    // Modified raymarch loop that displays a heatmap of ray sample counts
-    // Useful for performance testing and analysis
-    // ro: ray origin
-    // rd: ray direction
-    // s: unity depth buffer
-    fixed4 raymarch_perftest(float3 ro, float3 rd, float s) {
-        float t = 0; // current distance traveled along ray
-        for (int i = 0; i < MAX_STEPS; ++i) {
-            float3 p = ro + rd * t; // World space position of sample
-            float2 d = map(p);      // Sample of distance field (see map())
-
-            // If the sample <= 0, we have hit something (see map()).
-            // If t > drawdist, we can safely bail because we have reached the max draw distance
-            if (d.x < PRECISION * t || t > _DrawDistance) {
-                // Simply return the number of steps taken, mapped to a color ramp.
-                float perf = (float)i / MAX_STEPS;
-                return fixed4(tex2Dlod(_ColorRamp_PerfMap, float4(perf,0,0,0)).xyz, 1);
-            }
-
-            t += d.x;
-        }
-        // By this point the loop guard (i < maxstep) is false.  Therefore
-        // we have reached maxstep steps.
-        return fixed4(tex2D(_ColorRamp_PerfMap, float2(1, 0)).xyz, 1);
     }
 
     fixed4 frag(v2f i) : SV_Target
@@ -349,10 +314,8 @@ Shader "Hidden/RaymarchGeneric"
         fixed3 col = tex2D(_MainTex,i.uv);
 
     #if DEBUG_PERFORMANCE
-        //fixed4 add = raymarch_perftest(ro, rd, depth);
         fixed4 add = renderPerf(ro, rd, depth);
     #else
-        //fixed4 add = raymarch(ro, rd, depth);
         fixed4 add = render(ro, rd, depth);
     #endif
 
