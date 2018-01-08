@@ -286,7 +286,9 @@ public class MeshData {
         }
 
         Mesh mesh = new Mesh();
-
+        if (triangles.Length > 65000) {
+            mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+        }
         // if you want meshes to be centered on planet
         //for(int i = 0; i < vertices.Length; ++i) {
         //    vertices[i] += pos;

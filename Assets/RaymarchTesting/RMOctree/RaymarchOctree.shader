@@ -1,7 +1,7 @@
 ﻿
 //http://flafla2.github.io/2016/10/01/raymarching.html
 
-Shader "Hidden/RaymarchTexture"
+Shader "Hidden/RaymarchOctree"
 {
     Properties
     {
@@ -46,8 +46,13 @@ Shader "Hidden/RaymarchTexture"
     //uniform float4x4 _MatTorus_InvModel;
     uniform sampler2D _ColorRamp_Material;
     uniform sampler2D _ColorRamp_PerfMap;
-    uniform sampler2D _ColorRamp_Density;
 	uniform sampler3D _Volume;
+    uniform float _VoxelSize = 1.0;	// currently unused, idea was to be able to specify worldspace size of voxels (now just things just combo of chunksize and texsize)
+	uniform float _ChunkSize = 64.0;	// world space size of chunk
+	static const float _TexSize = 64.0; // resolution of texture on each side (prob will change to 32 or 16 maybe?)
+	// basically seems like you want everything to match texture dims so far otherwise stuff just looks weird
+	// texs are gonna be like 16^3 or 32^3 all of em so nbd. still cant just upscale by *2 tho
+	// something to do with that fract(p) nonsense down below (maybe just rethink my own version of what its trying to do)
 
     uniform float _DrawDistance;
 
@@ -99,12 +104,18 @@ Shader "Hidden/RaymarchTexture"
 		//p.y = (int)p.y;
 		//p.z = (int)p.z;
 		// need to somehow get accurate readings even tho texture isnt a perfect field
-		// biinear sampling is good but i want those blocky boys (also prob cheaper?
+		// biinear sampling is good but i want those blocky boys (also prob cheaper? doesnt seem like it though...
 		// maybe thing where if u overstep field you step backward next time at half rez
-		float d = tex3Dlod(_Volume, float4(p.x,p.y,p.z,0)/64.0).r;
+		float d = tex3Dlod(_Volume, float4(p.x,p.y,p.z,0) / _ChunkSize).r;
+
+		//p.x = (int)(p.x/_VoxelSize)*_VoxelSize;
+		//p.y = (int)(p.y/_VoxelSize)*_VoxelSize;
+		//p.z = (int)(p.z/_VoxelSize)*_VoxelSize;
+		//float d = tex3Dlod(_Volume, float4(p.x,p.y,p.z,0) / _ChunkSize).r;
+
 		//float d = sdSphere(p, float3(0,32,32), 32.0);
 
-		return float2(d, 0.68);
+		return float2(d, 0.67);
     }
 
     float3 calcNormal(in float3 pos) {
@@ -119,7 +130,9 @@ Shader "Hidden/RaymarchTexture"
 
 		// right now it should be whatever the current voxel size is i think
 		// because you want to sample world space neighbor voxel cube boy
-        const float2 eps = float2(1.0, 0.0);	// used to be 0.001 for normal raymarching
+		// used to be 0.001 for normal raymarching (cant have any err tho)
+        const float2 eps = float2(_ChunkSize/_TexSize, 0.0);
+
         // The idea here is to find the "gradient" of the distance field at pos
         // Remember, the distance field is not boolean - even if you are inside an object
         // the number is negative, so this calculation still works.
@@ -163,7 +176,7 @@ Shader "Hidden/RaymarchTexture"
         float m = -1.0;
 
 		float tmin,tmax;
-		bool intersects = IntersectBox(ro, rd, float3(0,0,0), float3(1,1,1)*64., tmin, tmax);
+		bool intersects = IntersectBox(ro, rd, float3(0,0,0), float3(1,1,1)*_ChunkSize, tmin, tmax);
 		if(!intersects){
 			#if DEBUG_PERFORMANCE
 				return float2(_DrawDistance, 0.0);
@@ -188,7 +201,7 @@ Shader "Hidden/RaymarchTexture"
             float2 r = map(p);
 
 			// if close enough, return current distance and material
-			if (r.x <= 0.0 ){ //PRECISION * t ) {
+			if (r.x <= PRECISION * t + 0.1) { // add a little too (dont really know what im doing just eyeballing raycast to match with mc mesh a little better)
                 #if DEBUG_PERFORMANCE
 					return float2(t, (float)i / MAX_STEPS);
 				#else
@@ -197,13 +210,11 @@ Shader "Hidden/RaymarchTexture"
             }
 
 			// weird clamping shit for point filtering (looks kinda good actually on point noise)
-			float3 deltas = (step(0, rd) - frac(p)) / rd;
+			float fm = _ChunkSize / _TexSize;			
+			float3 deltas = (step(0,rd)*fm - fmod(p,fm)) / rd;
 			float minc = min(min(deltas.x, deltas.y),deltas.z);
-			float ratio = 1.0 / 64.0;
-			//t += max(minc + r.x*ratio, 0.001); // this max doesnt rly do anything i dont think
-			t += max(minc + r.x*(min(ratio+t*0.001,1.0)), 0.001); // scaled version of above line so less accurate far away
-			
-			//t += t * 0.01;	// this linear step had similar looking close up artifacts to tommyboy so hmm
+			const float ERR = 0.002;
+			t += max(minc + r.x*min(t*ERR,1.0), 0.001); // scaled version of above line so less accurate far away
 
             //t += r.x;
             m = r.y;    // remember material of closest
@@ -231,7 +242,7 @@ Shader "Hidden/RaymarchTexture"
                                                                    // oh actually advantage of using castray function is dont get those warnings cuz not in for loop anymore
             col.xyz = tex2Dlod(_ColorRamp_Material, float4(m, 0, 0, 0)).xyz;
 			//float3 fp = floor(p*5.);
-			//col.xyz = frac(fp / 64.0);
+			//col.xyz = frac(fp / _VoxelSize);
 
             col.xyz *= light;
 

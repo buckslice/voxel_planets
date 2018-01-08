@@ -3,18 +3,17 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class MarchingCubesDispatcher : MonoBehaviour {
 
-    static MarchingCubesDispatcher instance;
+public class MarchingCubesDispatcher : MonoBehaviour {
 
     [SerializeField]
     int resolution = 16;     // should be same as Octree.SIZE
     [SerializeField]
+    int numWorkers = 8;     // number of concurrent workers
+    [SerializeField]
     ComputeShader MarchingCubesCS;
     [SerializeField]
     Material noiseMat;
-
-    const int WORKERS = 8;
     static MarchingCubesWorker[] workers;
 
     int kernelMC;
@@ -27,6 +26,7 @@ public class MarchingCubesDispatcher : MonoBehaviour {
     public Text countText;
 
     // Use this for initialization
+    static MarchingCubesDispatcher instance; // just used to make sure only one of these at once
     void Awake() {
         if (!SystemInfo.supportsComputeShaders) {
             Debug.LogError("THIS IS BAD");
@@ -49,12 +49,12 @@ public class MarchingCubesDispatcher : MonoBehaviour {
         MarchingCubesCS.SetInt("_gridSize", resolution);
         MarchingCubesCS.SetFloat("_isoLevel", 0.0f);    // halfway point for noise in range [-1, 1]
 
-        workers = new MarchingCubesWorker[WORKERS];
+        workers = new MarchingCubesWorker[numWorkers];
         for (int i = 0; i < workers.Length; ++i) {
             workers[i] = new MarchingCubesWorker(resolution, kernelMC, MarchingCubesCS, noiseMat);
         }
     }
-
+    
     // Update is called once per frame
     void Update() {
         UpdateWorkers();
@@ -131,7 +131,7 @@ class MarchingCubesWorker {
     ComputeBuffer appendBuffer;
     ComputeBuffer argBuffer;
 
-    RenderTexture density;
+    RenderTexture density = null;
 
     float[] data;
     int[] count;
@@ -139,12 +139,9 @@ class MarchingCubesWorker {
     public bool free = true;
     bool retrievedData = false;
     bool retrievedCount = false;
-    bool requestedEver = false; // only for editor rly incase closed before getting any requests (rare)
+    bool needToFree = false; // only for editor rly incase closed before getting any requests (rare)
 
     ChunkRequest cur = null;
-
-    int maxTris;
-    int floatsPerTri;
 
     public bool forgetNextResult = false;
 
@@ -157,8 +154,8 @@ class MarchingCubesWorker {
         // * 5 since up to 5 triangles per cube in marching cubes
         // sizeof(float)*6 because thats the size of a vertex, * 3 cuz 3 verts per triangle
         // also one less than resolution because 64x64x64 density map represents 63*63*63 cubes only
-        maxTris = (resolution - 1) * (resolution - 1) * (resolution - 1) * 5;
-        floatsPerTri = 6 * 3;
+        int maxTris = (resolution - 1) * (resolution - 1) * (resolution - 1) * 5;
+        int floatsPerTri = 6 * 3;
 
         appendBuffer = new ComputeBuffer(maxTris, floatsPerTri * sizeof(float), ComputeBufferType.Append);
         argBuffer = new ComputeBuffer(4, sizeof(int), ComputeBufferType.IndirectArguments);
@@ -202,7 +199,7 @@ class MarchingCubesWorker {
         // this maybe can fail? should prob check for this case
         AsyncTextureReader.RequestBufferData(appendBuffer);
         AsyncTextureReader.RequestBufferData(argBuffer);
-        requestedEver = true;
+        needToFree = true;
     }
 
     public void Update() {
@@ -235,7 +232,7 @@ class MarchingCubesWorker {
         appendBuffer.Release();
         argBuffer.Release();
 
-        if (requestedEver) {
+        if (needToFree) {
             AsyncTextureReader.ReleaseTempResources(appendBuffer);
             AsyncTextureReader.ReleaseTempResources(argBuffer);
         }
@@ -284,10 +281,10 @@ class MarchingCubesWorker {
         GL.PopMatrix();
     }
 
-    int[] defaultArgs = new int[] { 0, 1, 0, 0 };  // could move this outside to avoid garbog
+    int[] defaultArgs = new int[] { 0, 1, 0, 0 };
     void DispatchMC() {
         // set compute shader references
-        Graphics.ClearRandomWriteTargets();
+        Graphics.ClearRandomWriteTargets(); // not sure if needed anymore
         appendBuffer.SetCounterValue(0);
 
         mccs.SetBuffer(kernelMC, ShaderProps.trianglesRW, appendBuffer);

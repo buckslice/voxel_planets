@@ -127,7 +127,7 @@ Shader "Noise/NoisePlanet"
         //f = Sphere(p, float3(0.0,0.0,0.0), rad);
 
         float r = 14000.0;
-        f = Sphere(IN.texcoord, float3(0.0, 0.0, 0.0), r);
+        f = sdSphere(IN.texcoord, float3(0.0, 0.0, 0.0), r);
         float curl = fbm(IN.texcoord + _Offset, 4, 0.01, 0.55, 2.0)*10.;
         float n = ridged(IN.texcoord + curl + _Offset, _Octaves, _Frequency, _Persistence, _Lacunarity);
         f += n * 100.0; 
