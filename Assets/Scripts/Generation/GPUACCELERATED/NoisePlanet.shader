@@ -1,44 +1,3 @@
-//
-//	Code repository for GPU noise development blog
-//	http://briansharpe.wordpress.com
-//	https://github.com/BrianSharpe
-//
-//	I'm not one for copyrights.  Use the code however you wish.
-//	All I ask is that credit be given back to the blog or myself when appropriate.
-//	And also to let me know if you come up with any changes, improvements, thoughts or interesting uses for this stuff. :)
-//	Thanks!
-//
-//	Brian Sharpe
-//	brisharpe CIRCLE_A yahoo DOT com
-//	http://briansharpe.wordpress.com
-//	https://github.com/BrianSharpe
-//
-//===============================================================================
-//  Scape Software License
-//===============================================================================
-//
-//Copyright (c) 2007-2012, Giliam de Carpentier
-//All rights reserved.
-//
-//Redistribution and use in source and binary forms, with or without
-//modification, are permitted provided that the following conditions are met: 
-//
-//1. Redistributions of source code must retain the above copyright notice, this
-//   list of conditions and the following disclaimer. 
-//2. Redistributions in binary form must reproduce the above copyright notice,
-//   this list of conditions and the following disclaimer in the documentation
-//   and/or other materials provided with the distribution. 
-//
-//THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-//ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-//WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-//DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNERS OR CONTRIBUTORS BE LIABLE 
-//FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
-//DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
-//SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-//CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, 
-//OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
-//OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.;
 
 Shader "Noise/NoisePlanet"
 {
@@ -77,7 +36,7 @@ Shader "Noise/NoisePlanet"
     // now just need to fix problem with marching cubes generation lol
     struct v2f_init_customrendertexture2 {
         float4 vertex : SV_POSITION;
-        float3 texcoord : TEXCOORD0; //<---- float2 in orig source thanks blizzard
+        float3 texcoord : TEXCOORD0; //<---- only a float2 in orig source thanks blizzard
         //float3 direction : TEXCOORD1;
     };
 
@@ -110,7 +69,7 @@ Shader "Noise/NoisePlanet"
     }
 
     //v2f_customrendertexture
-    float frag(v2f_init_customrendertexture2 IN) : SV_Target
+    float4 frag(v2f_init_customrendertexture2 IN) : SV_Target
     {
         float f = 0.0;
 
@@ -131,8 +90,15 @@ Shader "Noise/NoisePlanet"
         float curl = fbm(IN.texcoord + _Offset, 4, 0.01, 0.55, 2.0)*10.;
         float n = ridged(IN.texcoord + curl + _Offset, _Octaves, _Frequency, _Persistence, _Lacunarity);
         f += n * 100.0; 
+		// bumpy noise on taller up mountains
+		float sn = ridged(IN.texcoord, 4, 0.05, 0.5, 2.0);
+		f += sn * 5.0 * saturate(-n);
 
-        return f;
+		float cr = saturate((fbm(IN.texcoord, 2, 0.005, 0.5, 2.0)+1.0)/2.0);
+		float cg = saturate(rand(IN.texcoord));
+		float cb = saturate((fbm(IN.texcoord, 4, 0.001, 0.52, 2.0)+1.0)/2.0);
+
+        return float4(0.5+cr*0.5, 0.2+cb*0.3, 0.1+cg*0.1, f);
     }
 
     ENDCG

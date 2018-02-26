@@ -7,7 +7,7 @@
 #pragma kernel MarchingCubes
 #pragma kernel TripleCount
 
-Texture3D<float> densityTexture;   // changed float4 to float since texture color format doesnt need rgba just a half
+Texture3D<float4> densityTexture;   // changed to reflect RenderTextureFormat
 float _isoLevel;
 int _gridSize;
 
@@ -15,6 +15,7 @@ struct Vertex
 {
 	float3 position;
 	float3 normal;
+	float3 color;
 };
 
 struct Triangle {
@@ -318,24 +319,28 @@ static const int triTable[256][16] =
 { 0, 3, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
 { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 } };
 
-float SampleData(int3 pos) {
+float4 SampleData(int3 pos) {
 	return densityTexture.Load(int4(pos, 0));   // optionally can clamp(x,0,1) this, line below too if you want
 }
 
+// THIS IS MESSED UP I THINK
+// only used for smooth normal calculations and doesnt work correctly anymore... need to investigate here
 float SampleLinear(float3 p)
 {
 	// need to mitigate the offset in p[x], so +float3(0.5) to be in [0;1] range
-	return densityTexture.SampleLevel(myLinearClampSampler, p + float3(0.5, 0.5, 0.5), 0);
+	return densityTexture.SampleLevel(myLinearClampSampler, p + float3(0.5, 0.5, 0.5), 0).a;	// density stored in alpha channel i thnk?
 }
+
 
 float3 VertexInterp(float3 p1, float3 p2, float valp1, float valp2)
 {
 	return lerp(p1, p2, (_isoLevel - valp1) / (valp2 - valp1));
+	//return lerp(p1, p2, 0.5);
 }
 
 float3 CalculateGradient(float3 p)
 {
-	float ratio = 1.0 / _gridSize; // may need -1 here?
+	float ratio = 1.0 / (_gridSize-1.0) ; // may need -1 here?
 
 	return float3(
 		SampleLinear(p - float3(1.0, 0.0, 0.0) * ratio)
@@ -370,7 +375,7 @@ void MarchingCubes(uint3 threadId : SV_DispatchThreadID)
 		p[7] = (threadId + float3(0, 1, 0)) / (_gridSize - 1) + offset
 	};
 
-	float val[8] = {
+	float4 samps[8] = {
 		SampleData(threadId + int3(0, 0, 1)),
 		SampleData(threadId + int3(1, 0, 1)),
 		SampleData(threadId + int3(1, 0, 0)),
@@ -379,6 +384,17 @@ void MarchingCubes(uint3 threadId : SV_DispatchThreadID)
 		SampleData(threadId + int3(1, 1, 1)),
 		SampleData(threadId + int3(1, 1, 0)),
 		SampleData(threadId + int3(0, 1, 0))
+	};
+
+	float val[8] = {
+		samps[0].a,
+		samps[1].a,
+		samps[2].a,
+		samps[3].a,
+		samps[4].a,
+		samps[5].a,
+		samps[6].a,
+		samps[7].a,
 	};
 
     // >= isolevel means inside the surface (positive), < iso means outside as in empty space (negative)
@@ -432,6 +448,7 @@ void MarchingCubes(uint3 threadId : SV_DispatchThreadID)
             v2.position = vertlist[triTable[cubeIndex][i + 2]];
 
             // smooth normals
+			// these used to work but dont anymore..? go check old gpu base project maybe
 			//v0.normal = normalize(CalculateGradient(v0.position));
 			//v1.normal = normalize(CalculateGradient(v1.position));
 			//v2.normal = normalize(CalculateGradient(v2.position));
@@ -441,6 +458,11 @@ void MarchingCubes(uint3 threadId : SV_DispatchThreadID)
             v0.normal = normal;
             v1.normal = normal;
             v2.normal = normal;
+
+			float3 color = float3(samps[0].r,samps[0].g,samps[0].b);
+			v0.color = color;
+			v1.color = color;
+			v2.color = color;
 
             Triangle t;
             t.v[0] = v0;

@@ -41,7 +41,7 @@ public class MarchingCubesDispatcher : MonoBehaviour {
             return;
         }
 
-        queue = new FastPriorityQueue<ChunkRequest>(5000);
+        queue = new FastPriorityQueue<ChunkRequest>(10000);
 
         kernelMC = MarchingCubesCS.FindKernel("MarchingCubes");
         //kernelTripleCount = MarchingCubesCS.FindKernel("TripleCount");
@@ -54,15 +54,16 @@ public class MarchingCubesDispatcher : MonoBehaviour {
             workers[i] = new MarchingCubesWorker(resolution, kernelMC, MarchingCubesCS, noiseMat);
         }
     }
-    
+
     // Update is called once per frame
     void Update() {
+        //Debug.Log(queue.Count);
         UpdateWorkers();
         countText.text = "Requests: " + queue.Count;
     }
 
     void OnPostRender() {   // can speed up async reading (if requested earlier in update can be ready by end of frame)
-        UpdateWorkers();    
+        UpdateWorkers();
     }
 
     void UpdateWorkers() {
@@ -70,28 +71,52 @@ public class MarchingCubesDispatcher : MonoBehaviour {
             workers[i].Update();
             if (workers[i].free) {
                 // get request
-                ChunkRequest req = null;
                 while (queue.Count > 0) {
-                    req = queue.Dequeue();
-                    if (req.force || req.tree.parent.ShouldSplit()) {
+                    ChunkRequest req = queue.Dequeue();
+                    if (req.lastCheck()) {
                         workers[i].Launch(req);
-                        break;
-                    } else {
-                        req.tree.splitting = false;
+                        break; // move on to next worker
+                    } // else request is thrown away
+                    else {
+                        Debug.Log("last check fail pre");
                     }
                 }
             }
         }
     }
-   
 
     //public static void RequestChunk(Vector3 offset, float voxelSize, OnReceived callback) {
     //    //jobList.Add(new ChunkRequest(offset, voxelSize, callback));
     //}
 
-    public static void Enqueue(Octree tree, OnReceived callback, bool force = false) {
-        queue.Enqueue(new ChunkRequest(tree, callback, force), tree.GetSqrDistToCamFromCenter());
+    static bool Tautology() {
+        return true;
     }
+
+    //public static void Enqueue(Octree tree, OnReceived callback) {
+    //    //queue.Enqueue(new ChunkRequest(tree.worldPos, tree.voxelSize, callback, Tautology), tree.GetSqrDistToCamFromCenter());
+    //    queue.Enqueue(new ChunkRequest(tree.worldPos, tree.voxelSize, callback, Tautology), tree.GetSqrDistToCamFromCenter());
+    //}
+
+    //public static void Enqueue(Octree tree, OnReceived callback, LastCheck check) {
+    //    //queue.Enqueue(new ChunkRequest(tree.worldPos, tree.voxelSize, callback, Tautology), tree.GetSqrDistToCamFromCenter());
+    //    queue.Enqueue(new ChunkRequest(tree.worldPos, tree.voxelSize, callback, check), tree.GetSqrDistToCamFromCenter());
+    //}
+
+    // enqueues with no double checking function
+    public static void Enqueue(Vector3 worldPos, float voxelSize, OnReceived callback, float priority) {
+        queue.Enqueue(new ChunkRequest(worldPos, voxelSize, callback, Tautology), priority);
+    }
+
+    public static void Enqueue(Vector3 worldPos, float voxelSize, OnReceived callback, LastCheck lastCheck, float priority, int id = -1) {
+        ChunkRequest cr = new ChunkRequest(worldPos, voxelSize, callback, lastCheck);
+        cr.id = id;
+        queue.Enqueue(cr, priority);
+    }
+
+    //public static void EnqueueChild(Octree parent, Vector3 worldPos, float voxelSize, OnReceived callback, bool force = false) {
+    //    queue.Enqueue(new ChunkRequest(worldPos, voxelSize, callback, parent.ShouldSplit), parent.GetSqrDistToCamFromCenter());
+    //}
 
     // clears chunk request list (tells each worker to get rid of next mesh if they are mid process)
     public static void ClearRequests() {
@@ -109,16 +134,20 @@ public class MarchingCubesDispatcher : MonoBehaviour {
 
 }
 
-public delegate void OnReceived(MeshData mesh);
+public delegate bool LastCheck();
+public delegate void OnReceived(MeshData mesh, int id);
 
 class ChunkRequest : FastPriorityQueueNode {
-    public Octree tree;
+    public Vector3 worldPos;
+    public float voxelSize;
     public OnReceived callback;
-    public bool force;  // happens no matter what (no last minute checks)
-    public ChunkRequest(Octree tree, OnReceived callback, bool force) {
-        this.tree = tree;
+    public LastCheck lastCheck;
+    public int id = -1;
+    public ChunkRequest(Vector3 worldPos, float voxelSize, OnReceived callback, LastCheck lastCheck) {
+        this.worldPos = worldPos;
+        this.voxelSize = voxelSize;
         this.callback = callback;
-        this.force = force; 
+        this.lastCheck = lastCheck;
     }
 }
 
@@ -152,10 +181,10 @@ class MarchingCubesWorker {
         this.noiseMat = noiseMat;
 
         // * 5 since up to 5 triangles per cube in marching cubes
-        // sizeof(float)*6 because thats the size of a vertex, * 3 cuz 3 verts per triangle
-        // also one less than resolution because 64x64x64 density map represents 63*63*63 cubes only
+        // 9 is number of floats per vertex, then * 3 cuz 3 verts per triangle
+        // also one less than resolution because ie 64x64x64 density map represents 63*63*63 cubes only
         int maxTris = (resolution - 1) * (resolution - 1) * (resolution - 1) * 5;
-        int floatsPerTri = 6 * 3;
+        int floatsPerTri = 9 * 3;
 
         appendBuffer = new ComputeBuffer(maxTris, floatsPerTri * sizeof(float), ComputeBufferType.Append);
         argBuffer = new ComputeBuffer(4, sizeof(int), ComputeBufferType.IndirectArguments);
@@ -167,7 +196,7 @@ class MarchingCubesWorker {
 
         // create render texture
         // try with full res instead of just RHalf
-        density = new RenderTexture(resolution, resolution, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear) {
+        density = new RenderTexture(resolution, resolution, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear) {
             dimension = UnityEngine.Rendering.TextureDimension.Tex3D,
             volumeDepth = resolution,
             wrapMode = TextureWrapMode.Clamp,
@@ -179,7 +208,9 @@ class MarchingCubesWorker {
 
         if (!debugged) {
             long bytes = maxTris * floatsPerTri * sizeof(float);
-            Debug.Log((float)bytes / 1000000 + " mb per chunk");
+            Debug.Log((float)bytes / 1000000 + " mb per buffer");
+            long tsize = resolution * resolution * resolution * sizeof(float) * 4; // last multiplication is based of RenderTextureFormat
+            Debug.Log((float)tsize / 1000000 + " mb per texture");
             debugged = true;
         }
     }
@@ -220,8 +251,15 @@ class MarchingCubesWorker {
             }
         }
         if (retrievedData && retrievedCount) {
-            if (!forgetNextResult) {
-                cur.callback(BuildMeshData());
+            bool lastCheck = cur.lastCheck();
+            if (!forgetNextResult && lastCheck) {
+                cur.callback(BuildMeshData(), cur.id);
+            }
+            if (forgetNextResult) {
+                Debug.Log("forgot last");
+            }
+            if (!lastCheck) {
+                Debug.Log("last check fail post");
             }
 
             free = true;
@@ -247,9 +285,9 @@ class MarchingCubesWorker {
             return;
         }
 
-        noiseMat.SetVector(ShaderProps.LocalOffset, cur.tree.worldPos);
+        noiseMat.SetVector(ShaderProps.LocalOffset, cur.worldPos);
         noiseMat.SetFloat(ShaderProps.Resolution, resolution);
-        noiseMat.SetFloat(ShaderProps.Size, cur.tree.voxelSize);
+        noiseMat.SetFloat(ShaderProps.Size, cur.voxelSize);
 
         GL.PushMatrix();
         GL.LoadOrtho();
@@ -300,9 +338,9 @@ class MarchingCubesWorker {
     }
 
     MeshData BuildMeshData() {
-        int c = count[0]; // get number of triangles (used to have to triple because graphics.drawprocind needed number of verts)
+        int c = count[0]; // get number of triangles (used to have to triple because Graphics.DrawProceduralIndirect needed number of verts)
         if (c == 0) {
-            Debug.Log("Empty Mesh");
+            //Debug.Log("Empty Mesh");
             return null;
         }
 
@@ -310,24 +348,30 @@ class MarchingCubesWorker {
         // still need to build mesh on main thread tho
         Vector3[] verts = new Vector3[c * 3];
         Vector3[] norms = new Vector3[c * 3];
+        Color32[] colors = new Color32[c * 3];
         int[] tris = new int[c * 3];
 
+        int fpv = 9; // floats per vertex
         for (int i = 0; i < verts.Length; i++) {
-            float f0 = data[i * 6 + 0];
-            float f1 = data[i * 6 + 1];
-            float f2 = data[i * 6 + 2];
-            float f3 = data[i * 6 + 3];
-            float f4 = data[i * 6 + 4];
-            float f5 = data[i * 6 + 5];
+            float f0 = data[i * fpv + 0];
+            float f1 = data[i * fpv + 1];
+            float f2 = data[i * fpv + 2];
+            float f3 = data[i * fpv + 3];
+            float f4 = data[i * fpv + 4];
+            float f5 = data[i * fpv + 5];
+            float f6 = data[i * fpv + 6];
+            float f7 = data[i * fpv + 7];
+            float f8 = data[i * fpv + 8];
 
             //verts[i] = (new Vector3(f0, f1, f2)+Vector3.one*0.5f) * resolution * voxelSize;
-            verts[i] = (new Vector3(f0, f1, f2)) * resolution * cur.tree.voxelSize;
+            verts[i] = (new Vector3(f0, f1, f2)) * resolution * cur.voxelSize;
             norms[i] = new Vector3(f3, f4, f5);
+            colors[i] = new Color(f6, f7, f8);
 
             tris[i] = i;
         }
 
-        return new MeshData(verts, norms, tris);
+        return new MeshData(verts, norms, colors, tris);
 
     }
 }

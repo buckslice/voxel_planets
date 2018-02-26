@@ -7,6 +7,7 @@ public class OctreeViewer : MonoBehaviour {
     public int branch;
     public Vector3 offset;
     public bool shouldDraw = false;
+    public bool splitting = false;
     public Color color;
     Color origColor;
 

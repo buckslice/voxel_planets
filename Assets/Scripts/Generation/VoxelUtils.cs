@@ -139,6 +139,13 @@ public class MeshData {
         this.triangles = triangles;
     }
 
+    public MeshData(Vector3[] vertices, Vector3[] normals, Color32[] colors, int[] triangles) {
+        this.vertices = vertices;
+        this.normals = normals;
+        this.colors = colors;
+        this.triangles = triangles;
+    }
+
     //public MeshData(List<Vector3> vertices, List<int> triangles) {
     //    this.vertices = vertices;
     //    this.triangles = triangles;
@@ -281,7 +288,7 @@ public class MeshData {
     }
 
     public Mesh CreateMesh() {
-        if (vertices.Length == 0) {
+        if (vertices.Length == 0 || triangles.Length == 0) {
             return null;
         }
 

@@ -188,6 +188,9 @@ public class TPRBPlanetWalker : MonoBehaviour {
             if (anyInput) {
                 transform.position += gravForward * flySpeed * Time.deltaTime;
             }
+            if (Input.GetKey(KeyCode.LeftControl)) {
+                flySpeed *= 100.0f;
+            }
             if (Input.GetKey(KeyCode.LeftShift)) {
                 transform.position += gravDir * flySpeed * Time.deltaTime;
             }

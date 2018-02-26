@@ -89,7 +89,7 @@ public class SplitManager : MonoBehaviour {
                 taskList.Add(toSplit.SplitAsync());
                 newTasks++;
             } else {    // otherwise just remove from list
-                toSplit.splitting = false;
+                toSplit.SetSplitting(false);
             }
             
         }

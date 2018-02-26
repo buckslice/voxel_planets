@@ -4,8 +4,22 @@ using UnityEngine.UI;
 public class CelestialBody : MonoBehaviour {
 
     public Material terrainMat;
-    
-    public float[] splitLevels;
+
+    public float[] splitLevels = new float[]{
+        100000,
+        50000,
+        20000,
+        8000,
+        4000,
+        2000,
+        1000,
+        550,
+        310,
+        180,
+        100
+    };
+
+
     Transform playerTransform;
     public Vector3 player;
     //public float surfaceRadius = 500.0f;    // need to actually set these based off generation
@@ -30,9 +44,8 @@ public class CelestialBody : MonoBehaviour {
         root = new Octree(this, null, Vector3.zero, 0, 0);
         //root.BuildGameObject(root.GenerateMesh(true));
 
-        // not sure if this is great way to do it
-        root.BuildGameObjectCompute();
-        MarchingCubesDispatcher.Enqueue(root, root.AssignMesh, true);
+        root.SetupChunk();
+        MarchingCubesDispatcher.Enqueue(root.worldPos, root.voxelSize, root.AssignMesh, root.GetSqrDistToCamFromCenter());
         //root.SplitCompute();
 
         // calculating split levels by hand now
@@ -62,7 +75,7 @@ public class CelestialBody : MonoBehaviour {
         if (Input.GetKey(KeyCode.R)) {
             transform.Rotate(rotation * Time.deltaTime);
         }
-        if (Input.GetKey(KeyCode.P)) {
+        if (Input.GetKeyDown(KeyCode.P)) {
             MarchingCubesDispatcher.ClearRequests();
             root.ResetMeshes();
         }
@@ -79,7 +92,7 @@ public class CelestialBody : MonoBehaviour {
                 Debug.LogError("INVALID TREE DETECTED");
             }
             invalidCheckTimer = 2.0f;
-            int num = root.GetNumGameObjects(false);
+            int num = root.GetCount(false);
             countText.text = "Trees: " + num;
             //Debug.Log(root.GetNumGameObjects(true));
         }
