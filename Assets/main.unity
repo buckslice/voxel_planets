@@ -334,6 +334,11 @@ Prefab:
       propertyPath: splitLevels.Array.data[10]
       value: 125
       objectReference: {fileID: 0}
+    - target: {fileID: 114490528728606408, guid: 7c2fdccd37a5a354e95f229bee0d5fb6,
+        type: 2}
+      propertyPath: terrainMat
+      value: 
+      objectReference: {fileID: 2100000, guid: 5825b4df58eb7bb4eaef8e4188b59298, type: 2}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: 7c2fdccd37a5a354e95f229bee0d5fb6, type: 2}
   m_IsPrefabParent: 0
@@ -663,6 +668,25 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1165660408 stripped
+GameObject:
+  m_PrefabParentObject: {fileID: 1000011417383782, guid: 27765a2806fc16d47ad83e44b47d59ed,
+    type: 2}
+  m_PrefabInternal: {fileID: 2090311466}
+--- !u!114 &1165660409
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1165660408}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 090831ff856149e4eb6598a3b0999132, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  threshold: 100
+  physicsThreshold: 1000
+  defaultSleepThreshold: 0.14
 --- !u!1 &1182309635
 GameObject:
   m_ObjectHideFlags: 0

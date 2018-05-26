@@ -185,11 +185,11 @@ public class TPRBPlanetWalker : MonoBehaviour {
 
             // todo: hit button to increase or decrease flight speed by log amount or something
             float flySpeed = 100.0f;
-            if (anyInput) {
-                transform.position += gravForward * flySpeed * Time.deltaTime;
-            }
             if (Input.GetKey(KeyCode.LeftControl)) {
                 flySpeed *= 100.0f;
+            }
+            if (anyInput) {
+                transform.position += gravForward * flySpeed * Time.deltaTime;
             }
             if (Input.GetKey(KeyCode.LeftShift)) {
                 transform.position += gravDir * flySpeed * Time.deltaTime;
