@@ -82,8 +82,9 @@ Shader "Noise/NoisePlanet"
         //float rad = 2000.0;
         //float3 p = IN.texcoord;
         //float s = 5500.0;
-        //p = Repeat(p, float3(s,s,s));
-        //f = Sphere(p, float3(0.0,0.0,0.0), rad);
+        //p = opRep(p, float3(s,s,s));
+        //f = sdSphere(p, float3(0.0,0.0,0.0), rad);
+        //return float4(0.0, 0.0, 0.0, f);
 
         float r = 14000.0;
         f = sdSphere(IN.texcoord, float3(0.0, 0.0, 0.0), r);

@@ -1,4 +1,10 @@
-﻿Shader "Custom/BuckAtmoScattering"
+﻿// basically just want global fog that is in radius around planet
+// higher you go the more faint it gets until it smoothly becomes nothing at edge of atmosphere
+// when looked at from angle should be based on color lookup
+// when looking up out should be harder to see stars like blue sky or whatever color
+// but when looking down on it from space should be able to see land good still
+
+Shader "Custom/BuckAtmoScattering"
 {
     Properties
     {

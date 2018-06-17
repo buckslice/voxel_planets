@@ -87,12 +87,12 @@ public class TPRBPlanetWalker : MonoBehaviour {
     void Update() {
         // calculate 3rd person camera rotation around player
         Vector3 euler = camPivot.localRotation.eulerAngles;
-        euler.x -= Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime * 50.0f;
+        euler.x -= Input.GetAxis("Mouse Y") * mouseSensitivity * 0.5f;
         if (euler.x > 180.0f) {
             euler.x -= 360.0f;
         }
         euler.x = Mathf.Clamp(euler.x, -85.0f, 85.0f);
-        euler.y += Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime * 50.0f;
+        euler.y += Input.GetAxis("Mouse X") * mouseSensitivity * 0.5f;
         camPivot.localRotation = Quaternion.Euler(euler);
 
         // calc and set camera following distance
@@ -228,7 +228,7 @@ public class TPRBPlanetWalker : MonoBehaviour {
     }
 
     void FixedUpdate() {
-        if (rigid.isKinematic) {  // if kinematic nothing physics based will do anything
+        if (flyMode) { 
             return;
         }
 

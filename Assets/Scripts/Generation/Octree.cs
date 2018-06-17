@@ -1,4 +1,6 @@
 ﻿
+// ideas for future defines
+
 //#define SMOOTH_SHADING
 
 //#define GPU_MC // doesnt do anything yet, but should have way to switch back to CPU mode later
@@ -133,7 +135,6 @@ public class Octree {
 
     public void Update() {
         if (hasChildren) {
-            //GeoMorphInternal();
             if (ShouldMerge()) {
                 Merge();
             } else {
@@ -142,13 +143,12 @@ public class Octree {
                 }
             }
         } else if (!splitting && ShouldSplit()) {
-            //SplitManager.AddToSplitList(this
+            //SplitManager.AddToSplitList(this);
             SplitCompute();
 
         } else if (splitting && childMeshCount >= 8) {
             SplitResolveCompute();
         } else {
-            //GeoMorphLeaf();
             // if at max depth, have valid mesh, and close to cam then should have a collider
             if (depth == MAX_DEPTH && !emptyMesh && obj.mf.sharedMesh && GetSqrDistToCamFromCenter() < colliderGenDistance * colliderGenDistance) {
                 if (col == null) {     // if collider is null then spawn one
@@ -168,8 +168,7 @@ public class Octree {
         SetGeomorph();
     }
 
-    // area is in localSpace so transform it to be in world space
-    // this is transform point basically... (except that didnt work????)
+    // area is in localSpace so transform it to be in world space (TransformPoint didn't work for some reason)
     public static Vector3 LocalToWorld(Transform body, Vector3 localPos) {
         return body.rotation * localPos + body.position;
     }
@@ -177,65 +176,42 @@ public class Octree {
         return Quaternion.Inverse(body.rotation) * (worldPos - body.position);
     }
 
-    // one function now
-    // could split back into two like before for #efficiency but probly not worth
-    // when morphing, first fade in children then fade out parent
-    // if timeFullyCreated is 1 then children fade in from 0-0.5, parent fades out from 0.5-1
-
-    // maybe just dont do the halfway morph. either start morphing or unmorphing
-    // removes the distance calculations
-    //void SetGeomorph() {
-    //    timeSinceCreation += Time.deltaTime;
-    //    float t = timeSinceCreation / timeFullyCreated;
-
-    //    if (hasChildren) {  // internal node
-    //        float dist = (body.player - LocalToWorld(body.transform, localArea.center)).magnitude;
-    //        float level = body.splitLevels[depth];    // my depth
-    //        float absDist = Mathf.Abs(dist - level);
-    //        float blendBand = level * blendRange;
-
-    //        t = Mathf.Min(t, Mathf.Min(absDist / blendBand, 1.0f));
-    //        t = Mathf.Clamp01(2.0f - 2.0f * t);
-    //        obj.mr.enabled = t > 0.0f;
-
-    //    } else {    // leaf node
-    //        if (parent == null) {
-    //            Debug.Assert(depth == 0);
-    //            obj.SetTransparency(1.0f);
-    //            return;
-    //        }
-    //        float dist = (body.player - LocalToWorld(body.transform, parent.localArea.center)).magnitude;
-    //        float level = body.splitLevels[depth - 1];    // level at parents depth
-    //        float absDist = Mathf.Abs(dist - level);
-    //        float blendBand = level * blendRange;
-
-    //        t = Mathf.Min(t, Mathf.Min(absDist / blendBand, 1.0f));
-    //        t = Mathf.Clamp01(2.0f * t);
-    //    }
-
-    //    obj.SetTransparency(t);
-
-    //}
-
     // faster version of set geomorph that only uses timeSinceCreation to determine blend amount
     // saves on a lot of distance calls
     // only problem is when merging it pops back (need to have timer before merge to reblend? yaya)
     void SetGeomorph() {
-        timeSinceCreation += Time.deltaTime;
-        float t = timeSinceCreation / timeFullyCreated;
+        obj.SetTransparency(1.0f);
+        obj.mr.enabled = !hasChildren;
 
-        if (hasChildren) {
-            t = Mathf.Clamp01(2.0f - 2.0f * t);
-            obj.mr.enabled = t > 0.0f;
-        } else {
-            if (parent == null) {
-                Debug.Assert(depth == 0);
-                t = 1.0f;
-            } else {
-                t = Mathf.Clamp01(2.0f * t);
-            }
-        }
-        obj.SetTransparency(t);
+        // weird experimental to show 2 layers at a time which works but looks crappy
+        //bool shouldNotShow = false;
+        //if (hasChildren) {
+        //    shouldNotShow = true;
+        //    for(int i = 0; i < 8; ++i) {
+        //        if (!children[i].emptyMesh) {
+        //            shouldNotShow &= children[i].hasChildren;
+        //        }
+        //    }
+        //}
+        //obj.mr.enabled = !shouldNotShow;
+
+
+
+        //timeSinceCreation += Time.deltaTime;
+        //float t = timeSinceCreation / timeFullyCreated;
+
+        //if (hasChildren) {
+        //    t = Mathf.Clamp01(2.0f - 2.0f * t);
+        //    obj.mr.enabled = t > 0.0f;
+        //} else {
+        //    if (parent == null) {
+        //        Debug.Assert(depth == 0);
+        //        t = 1.0f;
+        //    } else {
+        //        t = Mathf.Clamp01(2.0f * t);
+        //    }
+        //}
+        //obj.SetTransparency(t);
     }
 
     public Task<SplitData> SplitAsync() {
@@ -410,10 +386,7 @@ public class Octree {
 
     float GetSplitPriority() {
         float sqr = GetSqrDistToCamFromCenter();
-        if (emptyMesh) { // this doesnt make a very discernable difference seems like...
-            sqr += 100000000; // 100 mill sqr is like adding on distance of 10K
-        }
-        //todo add a bunch for if has empty mesh (cuz child will prob be empty too)
+        //return sqr + depth * 100000000.0f;
         return sqr;
     }
 
@@ -431,7 +404,7 @@ public class Octree {
     }
 
     bool CanSplit() {
-        return depth < MAX_DEPTH && !dead && timeSinceCreation >= timeFullyCreated;
+        return depth < MAX_DEPTH && !dead; // && timeSinceCreation >= timeFullyCreated;
     }
 
     bool ShouldMerge() {

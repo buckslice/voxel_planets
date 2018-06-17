@@ -1,13 +1,12 @@
 ﻿
 //http://flafla2.github.io/2016/10/01/raymarching.html
 
-Shader "Hidden/RaymarchOctree"
+Shader "Hidden/RaymarchNoise"
 {
     Properties
     {
         _MainTex("Texture", 2D) = "white" {}
 		_Color("Color", COLOR) = (1,1,1,1)
-		_Volume("Volume", 3D) = "" {}
     }
         SubShader
     {
@@ -46,8 +45,7 @@ Shader "Hidden/RaymarchOctree"
     //uniform float4x4 _MatTorus_InvModel;
     uniform sampler2D _ColorRamp_Material;
     uniform sampler2D _ColorRamp_PerfMap;
-	uniform sampler3D _Volume;
-    uniform float _VoxelSize = 1.0;	// currently unused, idea was to be able to specify worldspace size of voxels (now just things just combo of chunksize and texsize)
+
 	uniform float _ChunkSize = 64.0;	// world space size of chunk
 	static const float _TexSize = 64.0; // resolution of texture on each side (prob will change to 32 or 16 maybe?)
 	// basically seems like you want everything to match texture dims so far otherwise stuff just looks weird
@@ -56,7 +54,7 @@ Shader "Hidden/RaymarchOctree"
 
     uniform float _DrawDistance;
 
-    static const int MAX_STEPS = 100;
+    static const int MAX_STEPS = 200;
     static const float PRECISION = 0.0001;
 
     struct appdata {
@@ -115,21 +113,19 @@ Shader "Hidden/RaymarchOctree"
 		//float d = sdSphere(p, float3(0,32,32), 32.0);
 
 
-		float d = tex3Dlod(_Volume, float4(p.x,p.y,p.z,0) / _ChunkSize).r;
-		return float2(d, 0.67);
 
-        //float f = 0.0;
-        //float r = 100.0;
-        //f = sdSphere(p, float3(0.0, 0.0, 0.0), r);
-        //float3 offset = float3(2.7, 5.0, 17.8);
-        ////offset = float3(0, 0, 0);
-        //float curl = fbm(p + offset, 4, 0.01, 0.55, 2.0)*10.;
-        //float n = ridged(p + curl + offset, 5, 0.001, 0.5, 2.0);
-        //f += n * 100.0;
-        //// bumpy noise on taller up mountains
-        //float sn = ridged(p, 4, 0.05, 0.5, 2.0);
-        //f += sn * 5.0 * saturate(-n);
-        //return float2(f, 0.67);
+        float f = 0.0;
+        float r = 5000.0;
+        f = sdSphere(p, float3(0.0, 0.0, 0.0), r);
+        float3 offset = float3(2.7, 5.0, 17.8);
+        //offset = float3(0, 0, 0);
+        float curl = fbm(p + offset, 4, 0.01, 0.55, 2.0)*10.;
+        float n = ridged(p + curl + offset, 5, 0.001, 0.5, 2.0);
+        f += n * 100.0;
+        // bumpy noise on taller up mountains
+        float sn = ridged(p, 4, 0.05, 0.5, 2.0);
+        f += sn * 5.0 * saturate(-n);
+        return float2(f, 0.67);
 
         //float cr = saturate((fbm(IN.texcoord, 2, 0.005, 0.5, 2.0) + 1.0) / 2.0);
         //float cg = saturate(rand(IN.texcoord));
@@ -153,7 +149,7 @@ Shader "Hidden/RaymarchOctree"
 		// right now it should be whatever the current voxel size is i think
 		// because you want to sample world space neighbor voxel cube boy
 		// used to be 0.001 for normal raymarching (cant have any err tho)
-        const float2 eps = float2(_ChunkSize/_TexSize, 0.0);
+        const float2 eps = float2(0.001, 0.0);
 
         // The idea here is to find the "gradient" of the distance field at pos
         // Remember, the distance field is not boolean - even if you are inside an object
@@ -198,7 +194,8 @@ Shader "Hidden/RaymarchOctree"
         float m = -1.0;
 
 		float tmin,tmax;
-		bool intersects = IntersectBox(ro, rd, float3(0,0,0), float3(1,1,1)*_ChunkSize, tmin, tmax);
+        float s2 = 14000.0/2.0;
+		bool intersects = IntersectBox(ro, rd, float3(-s2,-s2,-s2), float3(s2,s2,s2), tmin, tmax);
 		if(!intersects){
 			#if DEBUG_PERFORMANCE
 				return float2(_DrawDistance, 0.0);
@@ -223,7 +220,7 @@ Shader "Hidden/RaymarchOctree"
             float2 r = map(p);
 
 			// if close enough, return current distance and material
-			if (r.x <= PRECISION * t + 0.1) { // add a little too (dont really know what im doing just eyeballing raycast to match with mc mesh a little better)
+			if (r.x <= PRECISION * t) {
                 #if DEBUG_PERFORMANCE
 					return float2(t, (float)i / MAX_STEPS);
 				#else
@@ -232,13 +229,13 @@ Shader "Hidden/RaymarchOctree"
             }
 
 			// weird clamping shit for point filtering (looks kinda good actually on point noise)
-			float fm = _ChunkSize / _TexSize;			
-			float3 deltas = (step(0,rd)*fm - fmod(p,fm)) / rd;
-			float minc = min(min(deltas.x, deltas.y),deltas.z);
-			const float ERR = 0.002;
-			t += max(minc + r.x*min(t*ERR,1.0), 0.001); // scaled version of above line so less accurate far away
+			//float fm = _ChunkSize / _TexSize;			
+			//float3 deltas = (step(0,rd)*fm - fmod(p,fm)) / rd;
+			//float minc = min(min(deltas.x, deltas.y),deltas.z);
+			//const float ERR = 0.002;
+			//t += max(minc + r.x*min(t*ERR,1.0), 0.001); // scaled version of above line so less accurate far away
 
-            //t += r.x;
+            t += r.x;
             m = r.y;    // remember material of closest
         }
         // these two options below only get called if i hits the max

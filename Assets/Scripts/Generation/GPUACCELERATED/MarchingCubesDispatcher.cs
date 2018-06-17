@@ -85,23 +85,9 @@ public class MarchingCubesDispatcher : MonoBehaviour {
         }
     }
 
-    //public static void RequestChunk(Vector3 offset, float voxelSize, OnReceived callback) {
-    //    //jobList.Add(new ChunkRequest(offset, voxelSize, callback));
-    //}
-
     static bool Tautology() {
         return true;
     }
-
-    //public static void Enqueue(Octree tree, OnReceived callback) {
-    //    //queue.Enqueue(new ChunkRequest(tree.worldPos, tree.voxelSize, callback, Tautology), tree.GetSqrDistToCamFromCenter());
-    //    queue.Enqueue(new ChunkRequest(tree.worldPos, tree.voxelSize, callback, Tautology), tree.GetSqrDistToCamFromCenter());
-    //}
-
-    //public static void Enqueue(Octree tree, OnReceived callback, LastCheck check) {
-    //    //queue.Enqueue(new ChunkRequest(tree.worldPos, tree.voxelSize, callback, Tautology), tree.GetSqrDistToCamFromCenter());
-    //    queue.Enqueue(new ChunkRequest(tree.worldPos, tree.voxelSize, callback, check), tree.GetSqrDistToCamFromCenter());
-    //}
 
     // enqueues with no double checking function
     public static void Enqueue(Vector3 worldPos, float voxelSize, OnReceived callback, float priority) {
@@ -113,10 +99,6 @@ public class MarchingCubesDispatcher : MonoBehaviour {
         cr.id = id;
         queue.Enqueue(cr, priority);
     }
-
-    //public static void EnqueueChild(Octree parent, Vector3 worldPos, float voxelSize, OnReceived callback, bool force = false) {
-    //    queue.Enqueue(new ChunkRequest(worldPos, voxelSize, callback, parent.ShouldSplit), parent.GetSqrDistToCamFromCenter());
-    //}
 
     // clears chunk request list (tells each worker to get rid of next mesh if they are mid process)
     public static void ClearRequests() {
@@ -316,6 +298,7 @@ class MarchingCubesWorker {
 
             GL.End();
         }
+
         GL.PopMatrix();
     }
 

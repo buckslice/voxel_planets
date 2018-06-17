@@ -10,13 +10,13 @@ using UnityEngine.UI;
 public class SplitManager : MonoBehaviour {
 
     // shared list between main and worker thread of octrees to split
-    public static List<Octree> splitList = new List<Octree>();
-    public static List<Task<SplitData>> taskList = new List<Task<SplitData>>();
+    static List<Octree> splitList = new List<Octree>();
+    static List<Task<SplitData>> taskList = new List<Task<SplitData>>();
 
-    public static Stack<ChunkObject> freeObjects = new Stack<ChunkObject>();
-    public static Stack<ColliderObject> freeColliders = new Stack<ColliderObject>();
+    static Stack<ChunkObject> freeObjects = new Stack<ChunkObject>();
+    static Stack<ColliderObject> freeColliders = new Stack<ColliderObject>();
 
-    private static Transform tform;
+    static Transform tform;
 
     public Text splitCountText;
 
@@ -31,104 +31,88 @@ public class SplitManager : MonoBehaviour {
         //Debug.Log("maxConcurrentTasks set: " + maxConcurrentTasks);
 
     }
-    
-    // Update is called once per frame
-    void Update() {
-        int newTasks = 0;
-        while(splitList.Count > 0   // while there are things to split
-           && newTasks < taskLaunchesPerFrame  // and havent launched too many tasks this frame
-           && taskList.Count < maxConcurrentTasks) { // and there are less tasks going than max
 
-            // find deepest depth then find closest to cam from those and split
-            //int d = 0;
-            //for(int i = 0; i < splitList.Count; ++i) {
-            //    d = Mathf.Max(d, splitList[i].depth);
-            //}
-            //List<int> lowDepthList = new List<int>();
-            //for(int i = 0; i < splitList.Count; ++i) {
-            //    if(splitList[i].depth == d) {
-            //        lowDepthList.Add(i);
-            //    }
-            //}
+    //// Update is called once per frame
+    //void Update() {
+    //    int newTasks = 0;
+    //    while (splitList.Count > 0   // while there are things to split
+    //       && newTasks < taskLaunchesPerFrame  // and havent launched too many tasks this frame
+    //       && taskList.Count < maxConcurrentTasks) { // and there are less tasks going than max
 
-            //int count = lowDepthList.Count;
-            //int endIndex = count - 1;
-            //float closestDist = float.MaxValue;
-            //int closestIndex = lowDepthList[endIndex];
-            //for (int i = 0; i < count; ++i) {
-            //    float dist = splitList[lowDepthList[i]].GetSqrDistToCamFromCenter();
-            //    if (dist < closestDist) {
-            //        closestIndex = lowDepthList[i];
-            //        closestDist = dist;
-            //    }
-            //}
+    //        // find lowest depth of trees on list
+    //        int count = splitList.Count;
+    //        int minDepth = Octree.MAX_DEPTH;
+    //        for (int i = 0; i < count; ++i) {
+    //            minDepth = Mathf.Min(minDepth, splitList[i].depth);
+    //        }
 
-            // find octree closest to cam and split that
-            int count = splitList.Count;
-            int endIndex = count - 1;
-            float closestDist = float.MaxValue;
-            int closestIndex = endIndex;
-            for (int i = 0; i < count; ++i) {
-                float dist = splitList[i].GetSqrDistToCamFromCenter();
-                if (dist < closestDist) {
-                    closestIndex = i;
-                    closestDist = dist;
-                }
-            }
+    //        int closest = 0;
+    //        float closestDist = float.MaxValue;
+    //        for (int i = 0; i < count; ++i) {
+    //            if (splitList[i].depth > minDepth) {
+    //                continue;
+    //            }
 
-            Octree toSplit = splitList[closestIndex];
-            if (count > 1) {    // remove from list fast
-                splitList[closestIndex] = splitList[endIndex];
-                splitList.RemoveAt(endIndex);
-            } else {
-                splitList.Clear();
-            }
+    //            float dist = splitList[i].GetSqrDistToCamFromCenter();
+    //            if (dist < closestDist) {
+    //                closest = i;
+    //                closestDist = dist;
+    //            }
+    //        }
 
-            // one last check before queueing up task
-            if (toSplit.ShouldSplit()) {
-                taskList.Add(toSplit.SplitAsync());
-                newTasks++;
-            } else {    // otherwise just remove from list
-                toSplit.SetSplitting(false);
-            }
-            
-        }
+    //        Octree toSplit = splitList[closest];
+    //        if (count > 1) {    // remove from list fast
+    //            splitList[closest] = splitList[count - 1];
+    //            splitList.RemoveAt(count - 1);
+    //        } else {
+    //            splitList.Clear();
+    //        }
 
-        // check and resolve tasks that are complete
-        int resolutionsPerFrame = 1;
-        for(int i = 0; i < taskList.Count;) {
-            if (taskList[i].IsCompleted) {
-                //Debug.Log("resolved: " + ++totalResolved);
-                SplitData sd = taskList[i].Result;
-                sd.tree.SplitResolve(sd.data);
-                taskList.RemoveAt(i);
-                if (--resolutionsPerFrame <= 0) {
-                    break;
-                }
-            } else {
-                ++i;
-            }
-        }
+    //        // one last check before queueing up task
+    //        if (toSplit.ShouldSplit()) {
+    //            taskList.Add(toSplit.SplitAsync());
+    //            newTasks++;
+    //        } else {    // otherwise just remove from list
+    //            toSplit.SetSplitting(false);
+    //        }
 
-        //splitCountText.text = "splits: " + splitList.Count;
-        //if(splitList.Count == 0) {
-        //    Debug.Log(Time.time);
-        //}
+    //    }
 
-    }
+    //    // check and resolve tasks that are complete
+    //    int resolutionsPerFrame = 1;
+    //    for (int i = 0; i < taskList.Count;) {
+    //        if (taskList[i].IsCompleted) {
+    //            //Debug.Log("resolved: " + ++totalResolved);
+    //            SplitData sd = taskList[i].Result;
+    //            sd.tree.SplitResolve(sd.data);
+    //            taskList.RemoveAt(i);
+    //            if (--resolutionsPerFrame <= 0) {
+    //                break;
+    //            }
+    //        } else {
+    //            ++i;
+    //        }
+    //    }
 
-    public static void AddToSplitList(Octree node) {
-        splitList.Add(node);
-    }
+    //    //splitCountText.text = "splits: " + splitList.Count;
+    //    //if(splitList.Count == 0) {
+    //    //    Debug.Log(Time.time);
+    //    //}
 
-    // todo reimplement these to generate closest first
-    public int NearestToFarthest(Octree o1, Octree o2) {
-        return o1.GetSqrDistToCamFromCenter().CompareTo(o2.GetSqrDistToCamFromCenter());
-    }
+    //}
 
-    public int FurthestToNearest(Octree o1, Octree o2) {
-        return o2.GetSqrDistToCamFromCenter().CompareTo(o1.GetSqrDistToCamFromCenter());
-    }
+    //public static void AddToSplitList(Octree node) {
+    //    splitList.Add(node);
+    //}
+
+    //// todo reimplement these to generate closest first
+    //public int NearestToFarthest(Octree o1, Octree o2) {
+    //    return o1.GetSqrDistToCamFromCenter().CompareTo(o2.GetSqrDistToCamFromCenter());
+    //}
+
+    //public int FurthestToNearest(Octree o1, Octree o2) {
+    //    return o2.GetSqrDistToCamFromCenter().CompareTo(o1.GetSqrDistToCamFromCenter());
+    //}
 
     // returns a gameobject with proper components
     public static ChunkObject GetObject() {
@@ -142,7 +126,7 @@ public class SplitManager : MonoBehaviour {
     }
 
     public static ColliderObject GetCollider() {
-        if(freeColliders.Count > 0) {
+        if (freeColliders.Count > 0) {
             ColliderObject free = freeColliders.Pop();
             free.go.SetActive(true);
             return free;
@@ -170,7 +154,7 @@ public class ChunkObject {
     public MeshRenderer mr;
     public MeshFilter mf;
     public OctreeViewer ov;
-    public MaterialPropertyBlock mpb;
+    public static MaterialPropertyBlock mpb = null;
     float lastTrans = -1.0f;
 
     public ChunkObject() {
@@ -179,7 +163,9 @@ public class ChunkObject {
         mr = go.AddComponent<MeshRenderer>();
         mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
         ov = go.AddComponent<OctreeViewer>();
-        mpb = new MaterialPropertyBlock();
+        if (mpb == null) {
+            mpb = new MaterialPropertyBlock();
+        }
     }
 
     // resets components back to default values
@@ -192,11 +178,8 @@ public class ChunkObject {
     }
 
     public void SetTransparency(float t) {
-        Debug.Assert(t >= 0.0f && t <= 1.0f);
-        if (t < 0.0f || t > 1.0f) {
-            Debug.Log(t);
-        }
-        if(t == lastTrans) {
+        Debug.Assert(t >= 0.0f && t <= 1.0f, "bad transparency value: " + t);
+        if (t == lastTrans) {
             return; // i have a feeling setting a property block has a decent cost (so only do when changes)
         }
         mpb.SetFloat(ShaderProps.Transparency, t);
