@@ -3,6 +3,7 @@ Shader "Noise/NoisePlanet"
 {
     Properties
     {
+        // most of these are currently unused, maybe once try raymarching again would be useful
         _Octaves("Octaves", Float) = 5.0
         _Frequency("Frequency", Float) = 1.0
         _Lacunarity("Lacunarity", Float) = 2.0
@@ -89,12 +90,16 @@ Shader "Noise/NoisePlanet"
         float r = 14000.0;
         f = sdSphere(IN.texcoord, float3(0.0, 0.0, 0.0), r);
         float curl = fbm(IN.texcoord + _Offset, 4, 0.01, 0.55, 2.0)*10.;
-        float n = ridged(IN.texcoord + curl + _Offset, _Octaves, _Frequency, _Persistence, _Lacunarity);
-        f += n * 100.0; 
-		// bumpy noise on taller up mountains
-		float sn = ridged(IN.texcoord, 4, 0.05, 0.5, 2.0);
-		f += sn * 5.0 * saturate(-n);
+        float n = ridged(IN.texcoord + curl + _Offset, 5, 0.0001, 0.5, 2.0);
+        f += n * 500.0; 
+		//// bumpy noise on taller up mountains
+		//float sn = ridged(IN.texcoord, 4, 0.05, 0.5, 2.0);
+		//f += sn * 5.0 * saturate(-n);
 
+        float w = worley(IN.texcoord + _Offset, 5, 0.01, 0.4, 2.0, 2, 5);
+        f += w * 20.0;
+
+        // try some brighter astroneer colors
 		float cr = saturate((fbm(IN.texcoord, 2, 0.005, 0.5, 2.0)+1.0)/2.0);
 		float cg = saturate(rand(IN.texcoord));
 		float cb = saturate((fbm(IN.texcoord, 4, 0.001, 0.52, 2.0)+1.0)/2.0);

@@ -6,10 +6,9 @@ using UnityEngine.UI;
 
 public class MarchingCubesDispatcher : MonoBehaviour {
 
-    [SerializeField]
-    int resolution = 16;     // should be same as Octree.SIZE
-    [SerializeField]
-    int numWorkers = 8;     // number of concurrent workers
+    const int resolution = 16;     // should be same as Octree.SIZE
+    const int numWorkers = 16;     // number of concurrent workers
+    
     [SerializeField]
     ComputeShader MarchingCubesCS;
     [SerializeField]

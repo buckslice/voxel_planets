@@ -233,21 +233,17 @@ public class Octree {
     public void SplitCompute() {
         SetSplitting(true);
 
-        // should just add request to list that does 8 in a row i think?
-        // so dont make children until it returns with meshes and ur still want to split
-        // oooo could also maybe have gpu workers have a 2x2x2 size 3D texture and just slam noise all at once for them
-        // but then would probably have to change the compute shader...
         if (childMeshes == null) {
             childMeshes = new MeshData[8];
         }
         childMeshCount = 0;
         int childDepth = depth + 1;
         float childVoxelSize = GetVoxelSize(childDepth);
+        float priority = GetSplitPriority();
         for (int i = 0; i < 8; ++i) {
-            Vector3 childCenter = GetChildCenter(i);
-            Vector3 childWorldPos = childCenter - Vector3.one * (SIZE / 2f) * childVoxelSize;
+            Vector3 childWorldPos = GetChildCenter(i) - Vector3.one * (SIZE / 2f) * childVoxelSize;
 
-            MarchingCubesDispatcher.Enqueue(childWorldPos, childVoxelSize, GetChildMesh, LastSplitCheck, GetSplitPriority(), i);
+            MarchingCubesDispatcher.Enqueue(childWorldPos, childVoxelSize, GetChildMesh, LastSplitCheck, priority, i);
         }
 
     }

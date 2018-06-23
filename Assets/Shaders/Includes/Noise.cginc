@@ -203,3 +203,139 @@ float ridged(float3 x, int octaves, float frequency, float persistence, float la
     }
     return (sum - 1.1)*1.25;
 }
+
+
+
+
+
+//	FAST32_hash
+//	A very fast hashing function.  Requires 32bit support.
+//	http://briansharpe.wordpress.com/2011/11/15/a-fast-and-simple-32bit-floating-point-hash-function/
+//
+//	The hash formula takes the form....
+//	hash = mod( coord.x * coord.x * coord.y * coord.y, SOMELARGEFLOAT ) / SOMELARGEFLOAT
+//	We truncate and offset the domain to the most interesting part of the noise.
+//	SOMELARGEFLOAT should be in the range of 400.0->1000.0 and needs to be hand picked.  Only some give good results.
+//	3D Noise is achieved by offsetting the SOMELARGEFLOAT value by the Z coordinate
+//
+float4 FAST32_hash_3D_Cell(float3 gridcell)	//	generates 4 different random numbers for the single given cell point
+{
+    //    gridcell is assumed to be an integer coordinate
+
+    //	TODO: 	these constants need tweaked to find the best possible noise.
+    //			probably requires some kind of brute force computational searching or something....
+    const float2 OFFSET = float2(50.0, 161.0);
+    const float DOMAIN = 69.0;
+    const float4 SOMELARGEFLOATS = float4(635.298681, 682.357502, 668.926525, 588.255119);
+    const float4 ZINC = float4(48.500388, 65.294118, 63.934599, 63.279683);
+
+    //	truncate the domain
+    gridcell.xyz = gridcell - floor(gridcell * (1.0 / DOMAIN)) * DOMAIN;
+    gridcell.xy += OFFSET.xy;
+    gridcell.xy *= gridcell.xy;
+    return frac((gridcell.x * gridcell.y) * (1.0 / (SOMELARGEFLOATS + gridcell.zzzz * ZINC)));
+}
+static const int MinVal = -1;
+static const int MaxVal = 1;
+
+// distanceFunc
+// 1 = euclidian
+// 2 = euclidian squared?
+
+
+// cool celltype , distance func combos
+// 1 7
+
+float worleyNoise(float3 xyz, int cellType, int distanceFunction) {
+    int xi = int(floor(xyz.x));
+    int yi = int(floor(xyz.y));
+    int zi = int(floor(xyz.z));
+
+    float xf = xyz.x - float(xi);
+    float yf = xyz.y - float(yi);
+    float zf = xyz.z - float(zi);
+
+    float dist1 = 9999999.0;
+    float dist2 = 9999999.0;
+    float dist3 = 9999999.0;
+    float dist4 = 9999999.0;
+    float3 cell;
+
+    for (int z = MinVal; z <= MaxVal; z++) {
+        for (int y = MinVal; y <= MaxVal; y++) {
+            for (int x = MinVal; x <= MaxVal; x++) {
+                cell = FAST32_hash_3D_Cell(float3(xi + x, yi + y, zi + z)).xyz;
+                cell.x += (float(x) - xf);
+                cell.y += (float(y) - yf);
+                cell.z += (float(z) - zf);
+                float dist = 0.0;
+                if (distanceFunction <= 1) {
+                    dist = sqrt(dot(cell, cell));
+                } else if (distanceFunction > 1 && distanceFunction <= 2) {
+                    dist = dot(cell, cell); 
+                } else if (distanceFunction > 2 && distanceFunction <= 3) {
+                    dist = abs(cell.x) + abs(cell.y) + abs(cell.z);
+                    dist *= dist;
+                } else if (distanceFunction > 3 && distanceFunction <= 4) {
+                    dist = max(abs(cell.x), max(abs(cell.y), abs(cell.z)));
+                    dist *= dist;
+                } else if (distanceFunction > 4 && distanceFunction <= 5) {
+                    dist = dot(cell, cell) + cell.x*cell.y + cell.x*cell.z + cell.y*cell.z;
+                } else if (distanceFunction > 5 && distanceFunction <= 6) {
+                    dist = pow(abs(cell.x*cell.x*cell.x*cell.x + cell.y*cell.y*cell.y*cell.y + cell.z*cell.z*cell.z*cell.z), 0.25);
+                } else if (distanceFunction > 6 && distanceFunction <= 7) {
+                    dist = sqrt(abs(cell.x)) + sqrt(abs(cell.y)) + sqrt(abs(cell.z));
+                    dist *= dist;
+                }
+                if (dist < dist1) {
+                    dist4 = dist3;
+                    dist3 = dist2;
+                    dist2 = dist1;
+                    dist1 = dist;
+                } else if (dist < dist2) {
+                    dist4 = dist3;
+                    dist3 = dist2;
+                    dist2 = dist;
+                } else if (dist < dist3) {
+                    dist4 = dist3;
+                    dist3 = dist;
+                } else if (dist < dist4) {
+                    dist4 = dist;
+                }
+            }
+        }
+    }
+
+    if (cellType <= 1)	// F1
+        return dist1;	//	scale return value from 0.0->1.333333 to 0.0->1.0  	(2/3)^2 * 3  == (12/9) == 1.333333
+    else if (cellType > 1 && cellType <= 2)	// F2
+        return dist2;
+    else if (cellType > 2 && cellType <= 3)	// F3
+        return dist3;
+    else if (cellType > 3 && cellType <= 4)	// F4
+        return dist4;
+    else if (cellType > 4 && cellType <= 5)	// F2 - F1 
+        return dist2 - dist1;
+    else if (cellType > 5 && cellType <= 6)	// F3 - F2 
+        return dist3 - dist2;
+    else if (cellType > 6 && cellType <= 7)	// F1 + F2/2
+        return dist1 + dist2 / 2.0;
+    else if (cellType > 7 && cellType <= 8)	// F1 * F2
+        return dist1 * dist2;
+    else if (cellType > 8 && cellType <= 9)	// Crackle
+        return max(1.0, 10 * (dist2 - dist1));
+    else
+        return dist1;
+}
+float worley(float3 p, int octaves, float frequency, float persistence, float lacunarity, int cellType, int distanceFunction) {
+    float sum = 0;
+    float amplitude = 1.0;
+    for (int i = 0; i < octaves; i++) {
+        float h = 0;
+        h = worleyNoise(p * frequency, cellType, distanceFunction);
+        sum += h * amplitude;
+        frequency *= lacunarity;
+        amplitude *= persistence;
+    }
+    return sum;
+}
