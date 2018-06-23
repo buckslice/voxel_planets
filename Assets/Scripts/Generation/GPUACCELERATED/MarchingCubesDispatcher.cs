@@ -1,14 +1,22 @@
-﻿using System.Collections;
+﻿
+//#define UNITY_ASYNC
+
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+
+#if UNITY_ASYNC
+using Unity.Collections;
+using UnityEngine.Experimental.Rendering;
+#endif
 
 
 public class MarchingCubesDispatcher : MonoBehaviour {
 
     const int resolution = 16;     // should be same as Octree.SIZE
     const int numWorkers = 16;     // number of concurrent workers
-    
+
     [SerializeField]
     ComputeShader MarchingCubesCS;
     [SerializeField]
@@ -77,7 +85,7 @@ public class MarchingCubesDispatcher : MonoBehaviour {
                         break; // move on to next worker
                     } // else request is thrown away
                     else {
-                        Debug.Log("last check fail pre");
+                        //Debug.Log("last check fail pre");
                     }
                 }
             }
@@ -143,8 +151,15 @@ class MarchingCubesWorker {
 
     RenderTexture density = null;
 
+#if UNITY_ASYNC
+    NativeArray<float> data;
+    NativeArray<int> count;
+    AsyncGPUReadbackRequest appendRequest;
+    AsyncGPUReadbackRequest argRequest;
+#else
     float[] data;
     int[] count;
+#endif
 
     public bool free = true;
     bool retrievedData = false;
@@ -171,9 +186,11 @@ class MarchingCubesWorker {
         argBuffer = new ComputeBuffer(4, sizeof(int), ComputeBufferType.IndirectArguments);
         appendBuffer.SetCounterValue(0);
 
+#if !UNITY_ASYNC
         // init retrieval arrays
         data = new float[maxTris * floatsPerTri];
         count = new int[4];
+#endif
 
         // create render texture
         // try with full res instead of just RHalf
@@ -208,10 +225,15 @@ class MarchingCubesWorker {
 
         DispatchMC();
 
+#if UNITY_ASYNC
+        appendRequest = AsyncGPUReadback.Request(appendBuffer);
+        argRequest = AsyncGPUReadback.Request(argBuffer);
+#else
         // this maybe can fail? should prob check for this case
         AsyncTextureReader.RequestBufferData(appendBuffer);
         AsyncTextureReader.RequestBufferData(argBuffer);
         needToFree = true;
+#endif
     }
 
     public void Update() {
@@ -219,6 +241,26 @@ class MarchingCubesWorker {
             return;
         }
 
+
+#if UNITY_ASYNC
+        if (!retrievedData) {
+            if (appendRequest.hasError) {
+                Debug.Log("Append Request Error");
+            } else if (appendRequest.done) {
+                data = appendRequest.GetData<float>();
+                retrievedData = true;
+            }
+        }
+
+        if (!retrievedCount) {
+            if (argRequest.hasError) {
+                Debug.Log("Arg Request Error");
+            } else if (argRequest.done) {
+                count = argRequest.GetData<int>();
+                retrievedCount = true;
+            }
+        }
+#else
         if (!retrievedData) {
             AsyncTextureReader.Status status = AsyncTextureReader.RetrieveBufferData(appendBuffer, data);
             if (status == AsyncTextureReader.Status.Succeeded) {
@@ -231,6 +273,8 @@ class MarchingCubesWorker {
                 retrievedCount = true;
             }
         }
+#endif
+
         if (retrievedData && retrievedCount) {
             bool lastCheck = cur.lastCheck();
             if (!forgetNextResult && lastCheck) {
@@ -240,7 +284,7 @@ class MarchingCubesWorker {
                 Debug.Log("forgot last");
             }
             if (!lastCheck) {
-                Debug.Log("last check fail post");
+                //Debug.Log("last check fail post");
             }
 
             free = true;
@@ -251,10 +295,12 @@ class MarchingCubesWorker {
         appendBuffer.Release();
         argBuffer.Release();
 
+#if !UNITY_ASYNC
         if (needToFree) {
             AsyncTextureReader.ReleaseTempResources(appendBuffer);
             AsyncTextureReader.ReleaseTempResources(argBuffer);
         }
+#endif
     }
 
     void BlitNoise() {

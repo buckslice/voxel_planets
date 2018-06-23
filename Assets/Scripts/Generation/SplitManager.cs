@@ -178,7 +178,6 @@ public class ChunkObject {
     }
 
     public void SetTransparency(float t) {
-        Debug.Assert(t >= 0.0f && t <= 1.0f, "bad transparency value: " + t);
         if (t == lastTrans) {
             return; // i have a feeling setting a property block has a decent cost (so only do when changes)
         }
